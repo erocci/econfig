@@ -41,8 +41,16 @@ main(Args) ->
 -spec run(Files :: [string()], Opts :: econfig_opts()) -> ok | {error, econfig_err()}.
 run(Filenames, _Opts) ->
     AppEntries = lists:foldl(fun (Filename, Acc) ->
-				     {App, Model} = load_model(Filename),
-				     [{App, Model} | Acc]
+				     case load_model(Filename) of
+					 {ok, {App, Model}} ->
+					     [{App, Model} | Acc];
+					 {error, bad_name} ->
+					     % Simply ignore bad files
+					     ?info("W: Ignoring invalid file ~s~n", [Filename]),
+					     Acc;
+					 {error, _} = Err ->
+					     throw(Err)
+				     end
 			     end, [], Filenames),
     ConfigModel = build_model(AppEntries),
     econfig_model:pp(ConfigModel),
@@ -69,12 +77,12 @@ load_model(Filename) ->
 	[App, "econfig"] ->
 	    case file:consult(Filename) of
 		{ok, Entries} ->
-		    {list_to_atom(App), Entries};
+		    {ok, {list_to_atom(App), Entries}};
 		{error, _} = Err ->
-		    throw(Err)
+		    Err
 	    end;
 	_ ->
-	    throw({invalid_filename, Filename})
+	    {error, bad_name}
     end.
 
 
