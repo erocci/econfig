@@ -7,7 +7,7 @@ all: escriptize
 
 escriptize:
 	$(REBAR) escriptize
-	ln -s $(REBAR_BUILD_DIR)/bin/econfig
+	ln -fs $(REBAR_BUILD_DIR)/bin/econfig econfig
 
 compile:
 	$(REBAR) compile
