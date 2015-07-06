@@ -45,7 +45,7 @@ run(Filenames, _Opts) ->
 				     [{App, Model} | Acc]
 			     end, [], Filenames),
     ConfigModel = build_model(AppEntries),
-    io:format("Model: ~p~n", [ConfigModel]),
+    econfig_model:pp(ConfigModel),
     ok.
 
 %%%

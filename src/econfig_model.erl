@@ -14,6 +14,9 @@
 	 add_entries/3,
 	 solve_deps/1]).
 
+% pretty printer
+-export([pp/1]).
+
 -record model, {
 	  ev           :: ets:tid(),        % {entry key, vertex} table
 	  deps         :: ets:tid(),        % {dep key, value} table
@@ -22,14 +25,14 @@
 	 }.
 -type t() :: #model{}.
 
--define(ROOT, root).
+-define(ROOT, {{econfig, root}, "", boolean, false, []}).
 
 -spec new() -> t().
 new() ->
     EV_Tid = ets:new(ev, []),
     Deps_Tid = ets:new(deps, []),
     G = digraph:new(),
-    Root = digraph:add_vertex(G, ?ROOT, ?ROOT),             % root node connects to every entry
+    Root = digraph:add_vertex(G, ?ROOT),                  % root node connects to every entry
     #model{ev=EV_Tid, deps=Deps_Tid, graph=G, root=Root}.
 
 
@@ -44,11 +47,15 @@ add_entries(AppName, AppModel, Model) ->
 solve_deps(#model{graph=G} = Model) ->
     lists:foldl(fun ({Key, _, _, _, Opts}, Acc) ->
 			Deps = proplists:get_value(depends, Opts, []),
-			add_deps(Key, Deps, Acc);
-		    (root, Acc) ->
-			Acc
+			add_deps(Key, Deps, Acc)
 		end, Model, digraph:vertices(G)).
 
+-spec pp(t()) -> ok.
+pp(#model{root=_Root, graph=G}) ->
+    lists:foldl(fun ({Key, _, _, _, _}, Acc) ->
+			io:format("~b: ~p~n", [Acc, Key]),
+			Acc+1
+		end, 1, lists:reverse(digraph_utils:postorder(G))).
 
 %%%
 %%% Priv
