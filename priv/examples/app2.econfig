@@ -1,0 +1,3 @@
+%%-*- mode: erlang -*-
+{opt1, "", boolean, true,
+ []}.

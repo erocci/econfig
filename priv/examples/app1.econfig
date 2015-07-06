@@ -1,0 +1,13 @@
+%%-*- mode: erlang -*-
+{opt1, "", boolean, true,
+ [
+  {depends, [{opt2, '_'}, {opt3, '_'}]}
+ ]}.
+
+{opt2, "", boolean, true,
+ []}.
+
+{opt3, "", boolean, true,
+ [
+  {depends, [{{app2, opt1}, '_'}]}
+ ]}.
