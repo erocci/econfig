@@ -19,7 +19,8 @@
 -type econfig_opts() :: [].
 
 -define(argspec, [
-		  {help,      $h,          "help",         undefined,             "Show this help"}
+		  {verbose, $v, "verbose", integer,   "Verbose (multiple times increase verbosity)"},
+		  {help,    $h, "help",    undefined, "Show this help"}
 		 ]).
 
 main(Args) ->
@@ -30,14 +31,7 @@ main(Args) ->
 		    usage(),
 		    erlang:halt(0);
 		false ->
-		    try run(Files, Opts) of
-			ok ->
-			    erlang:halt(0);
-			{error, Err} ->
-			    handle_error(Err)
-		    catch _:Err ->
-			    handle_error(Err)
-		    end
+		    start(Files, Opts)
 	    end;
 	_ ->
 	    usage(),
@@ -57,6 +51,19 @@ run(Filenames, _Opts) ->
 %%%
 %%% Private
 %%%
+start(Files, Opts) ->
+    application:load(econfig),
+    {ok, _} = application:ensure_all_started(econfig),
+    ?debug("econfig ~p~n", [Files]),
+    try run(Files, Opts) of
+	ok ->
+	    erlang:halt(0);
+	{error, Err} ->
+	    handle_error(Err)
+    catch _:Err ->
+	    handle_error(Err)
+    end.
+
 load_model(Filename) ->
     case string:tokens(filename:basename(Filename), ".") of
 	[App, "econfig"] ->
@@ -72,10 +79,11 @@ load_model(Filename) ->
 
 
 build_model(Entries) ->
-    M0 = lists:foldl(fun ({AppName, AppEntries}, Acc) ->
-			     econfig_model:add_entries(AppName, AppEntries, Acc)
-		     end, econfig_model:new(), Entries),
-    econfig_model:solve_deps(M0).
+    M0 = econfig_model:new(),
+    Model = lists:foldl(fun ({AppName, AppEntries}, Acc) ->
+				econfig_model:add_entries(AppName, AppEntries, Acc)
+			end, M0, Entries),
+    econfig_model:solve_deps(Model).
 
 
 usage() ->
@@ -86,17 +94,17 @@ usage() ->
 
 
 handle_error({invalid_filename, F}) ->
-    ?error("Invalid filename: ~p", [F]),
+    io:format("E: Invalid filename: ~p~n", [F]),
     erlang:halt(1);
 
 handle_error({cycle, Path}) ->
-    ?error("Cycling references in configuration: ~p", [Path]),
+    io:format("E: Cycling references in configuration: ~p~n", [Path]),
     erlang:halt(1);
 
 handle_error({badentry, {App, Key}}) ->
-    ?error("Invalid key: ~p:~p", [App, Key]),
+    io:format("E: Invalid key: ~p:~p~n", [App, Key]),
     erlang:halt(1);
 
 handle_error(Err) ->
-    ?error(Err),
+    io:format("E: ~p~n", [Err]),
     erlang:halt(1).

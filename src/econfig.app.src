@@ -4,7 +4,10 @@
   {id, "econfig"},
   {description, "econfig is a config management system"},
   {vsn, git},
-  {modules, []},
+  {modules, [
+	     econfig,
+	     econfig_model
+	    ]},
   {registered, []},
   {applications, [kernel,
 		  stdlib,
