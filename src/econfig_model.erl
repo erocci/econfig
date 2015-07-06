@@ -1,0 +1,73 @@
+%%% @author Jean Parpaillon <jean.parpaillon@free.fr>
+%%% @copyright (C) 2015, Jean Parpaillon
+%%% @doc Creates and manipulate a configuration model
+%%%
+%%% @end
+%%% Created :  6 Jul 2015 by Jean Parpaillon <jean.parpaillon@free.fr>
+
+-module(econfig_model).
+
+-include("econfig.hrl").
+
+-export([new/0,
+	 add_entries/3,
+	 solve_deps/1]).
+
+-record model, {
+	  deps         :: ets:tid(),
+	  graph        :: digraph:graph(),
+	  root         :: digraph:vertex()
+	 }.
+-type t() :: #model{}.
+
+-define(ROOT, root).
+
+-spec new() -> t().
+new() ->
+    Deps_Tid = ets:new(deps, []),
+    G = digraph:new(),
+    Root = digraph:add_vertex(G, ?ROOT, ?ROOT),             % root node connects to every entry
+    #model{deps=Deps_Tid, graph=G, root=Root}.
+
+
+-spec add_entries(AppName :: atom(), AppModel :: [econfig_entry()], t()) -> t().
+add_entries(AppName, AppModel, Model) ->
+    lists:foldl(fun ({Key, Desc, Type, Dft, Opts}, Acc) -> 
+			add_entry({AppName, Key}, Desc, Type, Dft, Opts, Acc)
+		end, Model, AppModel).
+
+
+-spec solve_deps(t()) -> t().
+solve_deps(#model{graph=G} = Model) ->
+    lists:foldl(fun ({Key, _, _, _, Opts}, Acc) ->
+			Deps = proplists:get_value(depends, Opts, []),
+			add_deps(Key, Deps, Acc)
+		end, Model, digraph:vertices(G)).
+
+
+%%%
+%%% Priv
+%%%
+add_entry({App, Key}, Desc, Type, Dft, Opts, #model{graph=G, root=Root}=Model) ->
+    V = digraph:add_vertex(G, {{App, Key}, Desc, Type, Dft, Opts}, {App, Key}),
+    digraph:add_edge(G, Root, V),
+    Model.
+
+add_deps({App, Key}, Deps, Model) ->
+    lists:foldl(fun ({{DepApp, DepKey}, Val}, Acc) when is_atom(DepApp), is_atom(DepKey) ->
+			add_dep({App, Key}, {DepApp, DepKey}, Val, Acc);
+		    ({DepKey, Val}, Acc) when is_atom(Key) ->
+			add_dep({App, Key}, {App, DepKey}, Val, Acc)
+		end, Model, Deps).
+
+add_dep(Entry, Dep, Val, #model{deps=Tid, graph=G}=Model) ->
+    case digraph:add_edge(G, Dep, Entry) of
+	{error, {bad_edge, Path}} ->
+	    throw({cycle, Path});
+	{error, {bad_vertex, V}} ->
+	    throw({badentry, V});
+	_Edge ->
+	    Model
+    end,
+    ets:insert(Tid, {{Entry, Dep}, Val}),
+    Model.

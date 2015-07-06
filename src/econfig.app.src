@@ -1,0 +1,14 @@
+%%-*- mode: erlang -*-
+{application, econfig,
+ [
+  {id, "econfig"},
+  {description, "econfig is a config management system"},
+  {vsn, git},
+  {modules, []},
+  {registered, []},
+  {applications, [kernel,
+		  stdlib,
+		  sasl,
+		  inets]},
+  {env, []}
+ ]}.
