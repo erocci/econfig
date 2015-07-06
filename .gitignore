@@ -3,3 +3,4 @@
 /ebin/econfig
 /rebar.lock
 /_build
+/econfig
