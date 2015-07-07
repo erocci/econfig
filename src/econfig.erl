@@ -11,30 +11,32 @@
 -export([main/1]).
 
 % API
--export([start/2,
-	 run/2]).
+-export([start/3,
+	 run/2,
+	 command/2]).
 
 -include("econfig.hrl").
 -include("econfig_log.hrl").
 
--type econfig_opts() :: [].
+-type econfig_cmd() :: configure | print.
+-type econfig_opts() :: {frontend, tty}.
 
 -define(argspec, [
-		  {verbose, $v, "verbose", integer,   "Verbose (multiple times increase verbosity)"},
-		  {help,    $h, "help",    undefined, "Show this help"}
+		  {frontend, $f, "frontend", {string, "tty"},    "User frontend"},
+		  {verbose,  $v, "verbose",  integer,            "Verbose (multiple times increase verbosity)"},
+		  {help,     $h, "help",     undefined,          "Show this help"}
 		 ]).
 
 main(Args) ->
     case getopt:parse(?argspec, Args) of
-	{ok, {Opts, Files}} ->
+	{ok, {Opts, [Cmd | Files]}} ->
 	    case proplists:get_bool(help, Opts) of
 		true ->
 		    usage(),
 		    erlang:halt(0);
 		false ->
-		    try start(Files, Opts) of
-			{ok, Model} ->
-			    econfig_model:pp(Model),
+		    try start(cmd(Cmd), Files, Opts) of
+			ok ->
 			    erlang:halt(0);
 			{error, Err} ->
 			    handle_error(Err)
@@ -47,14 +49,45 @@ main(Args) ->
 	    erlang:halt(1)
     end.
 
--spec start(Filenames :: [string()], Opts :: econfig_opts()) -> ok.
-start(Files, Opts) ->
+-spec start(Cmd :: econfig_cmd(), Filenames :: [string()], Opts :: econfig_opts()) -> ok.
+start(Cmd, Files, Opts) ->
     application:load(econfig),
+    application:set_env(econfig, frontend, frontend(proplists:get_value(frontend, Opts))),
     {ok, _} = application:ensure_all_started(econfig),
-    run(Files, Opts).
+    run(Cmd, Files).
 
--spec run(Files :: [string()], Opts :: econfig_opts()) -> {ok, econfig_model:t()} | {error, econfig_err()}.
-run(Filenames, _Opts) ->
+-spec run(Cmd :: econfig_cmd(), Files :: [string()]) -> ok | {error, econfig_err()}.
+run(Cmd, Filenames) ->
+    case load_models(Filenames) of
+	{ok, ConfigModel} ->
+	    command(Cmd, ConfigModel);
+	{error, _} = Err ->
+	    Err
+    end.
+
+command(print, Model) ->
+    econfig_model:pp(Model),
+    ok;
+
+command(configure, Model) ->
+    C = econfig_config:new(Model),
+    F = econfig_frontend:new(Model),
+    case econfig_frontend:run(C, F) of
+	{ok, C1} ->
+	    io:format("~p~n", [econfig_config:export(C1)]),
+	    ok;
+	{error, _} = Err ->
+	    Err
+    end;
+
+command(undefined, Model) ->
+    Model.
+
+
+%%%
+%%% Private
+%%%
+load_models(Filenames) ->
     AppEntries = lists:foldl(fun (Filename, Acc) ->
 				     case load_model(Filename) of
 					 {ok, {App, Model}} ->
@@ -70,9 +103,6 @@ run(Filenames, _Opts) ->
     ConfigModel = build_model(AppEntries),
     {ok, ConfigModel}.
 
-%%%
-%%% Private
-%%%
 load_model(Filename) ->
     case string:tokens(filename:basename(Filename), ".") of
 	[App, "econfig"] ->
@@ -95,10 +125,18 @@ build_model(Entries) ->
     econfig_model:solve_deps(Model).
 
 
+cmd("configure") -> configure;
+cmd("print") -> print;
+cmd(Cmd) -> throw({invalid_command, Cmd}).
+
+frontend("tty") -> tty;
+frontend(Frontend) -> throw({invalid_frontend, Frontend}).
+
 usage() ->
     getopt:usage(?argspec, atom_to_list(?MODULE), 
-		 "<appname.econfig ...>",
-		 [{"<appname.econfig ...>", "List of appname.econfig files to consult"}]),
+		 "command <appname.econfig ...>",
+		 [{"command", "configure | print"},
+		  {"<appname.econfig ...>", "List of appname.econfig files to consult (ignore invalid extensions)"}]),
     ok.
 
 
@@ -112,6 +150,18 @@ handle_error({cycle, Path}) ->
 
 handle_error({badentry, {App, Key}}) ->
     io:format("E: Invalid key: ~p:~p~n", [App, Key]),
+    erlang:halt(1);
+
+handle_error({invalid_command, V}) ->
+    io:format("E: Invalid command: ~p~n", [V]),
+    erlang:halt(1);
+
+handle_error({invalid_frontend, V}) ->
+    io:format("E: Invalid frontend: ~p~n", [V]),
+    erlang:halt(1);
+
+handle_error({invalid_input, V}) ->
+    io:format("E: Invalid user input: ~p~n", [V]),
     erlang:halt(1);
 
 handle_error(Err) ->

@@ -1,13 +1,19 @@
 %%-*- mode: erlang -*-
-{opt1, "", boolean, true,
+{opt1, "A boolean option", boolean, true,
  [
   {depends, [{opt2, '_'}, {opt3, '_'}]}
  ]}.
 
-{opt2, "", boolean, true,
+{opt2, "A string option", string, true,
  []}.
 
-{opt3, "", boolean, true,
+{opt3, "An integer option", integer, true,
  [
   {depends, [{{app2, opt1}, '_'}]}
  ]}.
+
+{opt4, "An enum option", {enum, [un, deux, trois]}, un,
+ []}.
+
+{opt5, "A range option", {range, 10, 120}, 10, 
+ []}.

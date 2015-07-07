@@ -23,12 +23,16 @@
 
 -type econfig_entry_def() :: boolean() | integer() | string() | atom() | {choice, tuple()} | '_'.
 
+-type econfig_config() :: [econfig_value_entry()].
+
 -type econfig_value_entry() :: {App :: atom(), Name :: atom(), Value :: econfig_value()}.
 
 -type econfig_value() :: boolean() | integer() | string() | atom().
 
 -type econfig_err()   :: {invalid_filename, string()}
 		       | {cycle, term()}
-		       | {badentry, econfig_entry_key()}.
+		       | {badentry, econfig_entry_key()}
+		       | {invalid_command, string()}
+		       | {invalid_input, term()}.
 
 -endif.

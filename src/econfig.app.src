@@ -6,6 +6,8 @@
   {vsn, git},
   {modules, [
 	     econfig,
+	     econfig_model,
+	     econfig_config,
 	     econfig_model
 	    ]},
   {registered, []},
@@ -13,5 +15,7 @@
 		  stdlib,
 		  sasl,
 		  inets]},
-  {env, []}
+  {env, [
+	 {frontend, tty}
+	]}
  ]}.
