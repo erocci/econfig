@@ -11,7 +11,8 @@
 -export([main/1]).
 
 % API
--export([run/2]).
+-export([start/2,
+	 run/2]).
 
 -include("econfig.hrl").
 -include("econfig_log.hrl").
@@ -31,14 +32,28 @@ main(Args) ->
 		    usage(),
 		    erlang:halt(0);
 		false ->
-		    start(Files, Opts)
+		    try start(Files, Opts) of
+			{ok, Model} ->
+			    econfig_model:pp(Model),
+			    erlang:halt(0);
+			{error, Err} ->
+			    handle_error(Err)
+		    catch _:Err ->
+			    handle_error(Err)
+		    end
 	    end;
 	_ ->
 	    usage(),
 	    erlang:halt(1)
     end.
 
--spec run(Files :: [string()], Opts :: econfig_opts()) -> ok | {error, econfig_err()}.
+-spec start(Filenames :: [string()], Opts :: econfig_opts()) -> ok.
+start(Files, Opts) ->
+    application:load(econfig),
+    {ok, _} = application:ensure_all_started(econfig),
+    run(Files, Opts).
+
+-spec run(Files :: [string()], Opts :: econfig_opts()) -> {ok, econfig_model:t()} | {error, econfig_err()}.
 run(Filenames, _Opts) ->
     AppEntries = lists:foldl(fun (Filename, Acc) ->
 				     case load_model(Filename) of
@@ -53,25 +68,11 @@ run(Filenames, _Opts) ->
 				     end
 			     end, [], Filenames),
     ConfigModel = build_model(AppEntries),
-    econfig_model:pp(ConfigModel),
-    ok.
+    {ok, ConfigModel}.
 
 %%%
 %%% Private
 %%%
-start(Files, Opts) ->
-    application:load(econfig),
-    {ok, _} = application:ensure_all_started(econfig),
-    ?debug("econfig ~p~n", [Files]),
-    try run(Files, Opts) of
-	ok ->
-	    erlang:halt(0);
-	{error, Err} ->
-	    handle_error(Err)
-    catch _:Err ->
-	    handle_error(Err)
-    end.
-
 load_model(Filename) ->
     case string:tokens(filename:basename(Filename), ".") of
 	[App, "econfig"] ->

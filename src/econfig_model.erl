@@ -10,9 +10,12 @@
 -include("econfig.hrl").
 -include("econfig_log.hrl").
 
+% API
 -export([new/0,
 	 add_entries/3,
 	 solve_deps/1]).
+
+-export([graph/1]).
 
 % pretty printer
 -export([pp/1]).
@@ -51,11 +54,16 @@ solve_deps(#model{graph=G} = Model) ->
 		end, Model, digraph:vertices(G)).
 
 -spec pp(t()) -> ok.
-pp(#model{root=_Root, graph=G}) ->
+pp(#model{root=Root, graph=G}) ->
+    V = digraph_utils:reaching([Root], G),
     lists:foldl(fun ({Key, _, _, _, _}, Acc) ->
 			io:format("~b: ~p~n", [Acc, Key]),
 			Acc+1
-		end, 1, lists:reverse(digraph_utils:postorder(G))).
+		end, 1, lists:reverse(V)).
+
+-spec graph(t()) -> digraph:graph().
+graph(#model{graph=G}) ->
+    G.
 
 %%%
 %%% Priv
