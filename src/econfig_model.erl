@@ -27,15 +27,16 @@
 	  root         :: digraph:vertex()
 	 }.
 -type t() :: #model{}.
+-export_type([t/0]).
 
--define(ROOT, {{econfig, root}, "", boolean, false, []}).
+-define(root, {{econfig, root}, "", boolean, false, []}).
 
 -spec new() -> t().
 new() ->
     EV_Tid = ets:new(ev, []),
     Deps_Tid = ets:new(deps, []),
-    G = digraph:new(),
-    Root = digraph:add_vertex(G, ?ROOT),                  % root node connects to every entry
+    G = digraph:new([acyclic]),
+    Root = digraph:add_vertex(G, ?root),                  % root node connects to every entry
     #model{ev=EV_Tid, deps=Deps_Tid, graph=G, root=Root}.
 
 
@@ -60,6 +61,7 @@ pp(#model{root=Root, graph=G}) ->
 			io:format("~b: ~p~n", [Acc, Key]),
 			Acc+1
 		end, 1, lists:reverse(V)).
+
 
 -spec graph(t()) -> digraph:graph().
 graph(#model{graph=G}) ->
