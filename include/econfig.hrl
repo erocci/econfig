@@ -33,6 +33,7 @@
 		       | {cycle, term()}
 		       | {badentry, econfig_entry_key()}
 		       | {invalid_command, string()}
-		       | {invalid_input, term()}.
+		       | {invalid_input, term()}
+		       | {invalid_type, term()}.
 
 -endif.

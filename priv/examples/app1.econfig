@@ -4,10 +4,10 @@
   {depends, [{opt2, '_'}, {opt3, '_'}]}
  ]}.
 
-{opt2, "A string option", string, true,
+{opt2, "A string option", string, "val",
  []}.
 
-{opt3, "An integer option", integer, true,
+{opt3, "An integer option", integer, 1,
  [
   {depends, [{{app2, opt1}, '_'}]}
  ]}.
