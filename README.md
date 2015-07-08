@@ -22,8 +22,19 @@ Default Makefile target build the `econfig` script.
 # Usage
 
 ```
-$ econfig app1.econfig app2.econfig ...
+$ econfig configure app1.econfig app2.econfig ...
 ```
+
+# Options
+
+## Frontend
+
+By default, user is asked values from a tty based frontend. Frontend
+can be selected with `-f` option.
+
+Available frontends:
+* tty (default): console based, interactive;
+* defconfig: non interactive, set configuration with default values.
 
 # Configuration format
 

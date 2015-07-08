@@ -21,8 +21,11 @@
 -type econfig_cmd() :: configure | print.
 -type econfig_opts() :: {frontend, tty}.
 
+-define(frontends_str, 
+	io_lib:format("(~s)", [string:join([ atom_to_list(F) || F <- ?frontends], "|")])).
+
 -define(argspec, [
-		  {frontend, $f, "frontend", {string, "tty"},    "User frontend"},
+		  {frontend, $f, "frontend", {string, "tty"}, "User frontend " ++ ?frontends_str},
 		  {verbose,  $v, "verbose",  integer,            "Verbose (multiple times increase verbosity)"},
 		  {help,     $h, "help",     undefined,          "Show this help"}
 		 ]).
@@ -129,8 +132,13 @@ cmd("configure") -> configure;
 cmd("print") -> print;
 cmd(Cmd) -> throw({invalid_command, Cmd}).
 
-frontend("tty") -> tty;
-frontend(Frontend) -> throw({invalid_frontend, Frontend}).
+frontend(Frontend) -> 
+    case lists:member(Frontend, [ atom_to_list(F) || F <- ?frontends]) of
+	true ->
+	    list_to_atom(Frontend);
+	false ->
+	    throw({invalid_frontend, Frontend})
+    end.
 
 usage() ->
     getopt:usage(?argspec, atom_to_list(?MODULE), 

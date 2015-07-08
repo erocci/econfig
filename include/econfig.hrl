@@ -36,4 +36,6 @@
 		       | {invalid_input, term()}
 		       | {invalid_type, term()}.
 
+-define(frontends, [defconfig,tty]).
+
 -endif.
