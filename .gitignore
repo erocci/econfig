@@ -1,5 +1,6 @@
 *~
 *.beam
+.econfig
 /ebin/econfig
 /rebar.lock
 /_build

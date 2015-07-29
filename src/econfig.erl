@@ -77,7 +77,12 @@ command(print) ->
     ok;
 
 command(configure) ->
-    configure().
+    case econfig_srv:configure() of
+	{ok, C} ->
+	    econfig_config:export(C);
+	{error, Err} ->
+	    handle_error(Err)
+    end.
 
 cmd("configure") -> configure;
 cmd("print") -> print;

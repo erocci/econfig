@@ -56,6 +56,7 @@ models(Filenames) ->
 print() ->
     gen_server:call(?SERVER, print).
 
+-spec configure() -> {ok, econfig_config:t()} | {error, term()}.
 configure() ->
     gen_server:call(?SERVER, configure).
 
@@ -120,8 +121,7 @@ handle_call(configure, _From, #state{model=Model}=State) ->
     F = econfig_frontend:new(Model),
     case econfig_frontend:run(C, F) of
 	{ok, C1} ->
-	    io:format("~p~n", [econfig_config:export(C1)]),
-	    {reply, ok, State#state{config=C1, frontend=F}};
+	    {reply, {ok, C1}, State#state{config=C1, frontend=F}};
 	{error, _} = Err ->
 	    {reply, Err, State}
     end;

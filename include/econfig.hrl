@@ -1,6 +1,8 @@
 -ifndef(econfig_hrl).
 -define(econfig_hrl, true).
 
+-define(econfig_file, ".econfig").
+
 -type econfig_entry() :: {Key     :: atom(),
 			  Desc    :: string(), 
 			  Type    :: econfig_entry_type(),
@@ -34,7 +36,8 @@
 		       | {badentry, econfig_entry_key()}
 		       | {invalid_command, string()}
 		       | {invalid_input, term()}
-		       | {invalid_type, term()}.
+		       | {invalid_type, term()}
+		       | eacces.
 
 -define(frontends, [defconfig,tty]).
 
