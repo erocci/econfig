@@ -11,9 +11,8 @@
 -export([main/1]).
 
 % API
--export([start/3,
-	 run/2,
-	 command/2]).
+-export([load/1,
+	 configure/0]).
 
 -include("econfig.hrl").
 -include("econfig_log.hrl").
@@ -26,8 +25,8 @@
 
 -define(argspec, [
 		  {frontend, $f, "frontend", {string, "tty"}, "User frontend " ++ ?frontends_str},
-		  {verbose,  $v, "verbose",  integer,            "Verbose (multiple times increase verbosity)"},
-		  {help,     $h, "help",     undefined,          "Show this help"}
+		  {verbose,  $v, "verbose",  integer,         "Verbose (multiple times increase verbosity)"},
+		  {help,     $h, "help",     undefined,       "Show this help"}
 		 ]).
 
 main(Args) ->
@@ -52,81 +51,33 @@ main(Args) ->
 	    erlang:halt(1)
     end.
 
+load(Dirs) ->
+    econfig_srv:load(Dirs).
+
+configure() ->
+    econfig_srv:configure().
+
+%%%
+%%% Private
+%%%
 -spec start(Cmd :: econfig_cmd(), Filenames :: [string()], Opts :: econfig_opts()) -> ok.
 start(Cmd, Files, Opts) ->
     application:load(econfig),
     application:set_env(econfig, frontend, frontend(proplists:get_value(frontend, Opts))),
     {ok, _} = application:ensure_all_started(econfig),
-    run(Cmd, Files).
-
--spec run(Cmd :: econfig_cmd(), Files :: [string()]) -> ok | {error, econfig_err()}.
-run(Cmd, Filenames) ->
-    case load_models(Filenames) of
-	{ok, ConfigModel} ->
-	    command(Cmd, ConfigModel);
+    case econfig_srv:models(Files) of
+	ok ->
+	    command(Cmd);
 	{error, _} = Err ->
 	    Err
     end.
 
-command(print, Model) ->
-    econfig_model:pp(Model),
+command(print) ->
+    econfig_srv:print(),
     ok;
 
-command(configure, Model) ->
-    C = econfig_config:new(Model),
-    F = econfig_frontend:new(Model),
-    case econfig_frontend:run(C, F) of
-	{ok, C1} ->
-	    io:format("~p~n", [econfig_config:export(C1)]),
-	    ok;
-	{error, _} = Err ->
-	    Err
-    end;
-
-command(undefined, Model) ->
-    Model.
-
-
-%%%
-%%% Private
-%%%
-load_models(Filenames) ->
-    AppEntries = lists:foldl(fun (Filename, Acc) ->
-				     case load_model(Filename) of
-					 {ok, {App, Model}} ->
-					     [{App, Model} | Acc];
-					 {error, bad_name} ->
-					     % Simply ignore bad files
-					     ?info("W: Ignoring invalid file ~s~n", [Filename]),
-					     Acc;
-					 {error, _} = Err ->
-					     throw(Err)
-				     end
-			     end, [], Filenames),
-    ConfigModel = build_model(AppEntries),
-    {ok, ConfigModel}.
-
-load_model(Filename) ->
-    case string:tokens(filename:basename(Filename), ".") of
-	[App, "econfig"] ->
-	    case file:consult(Filename) of
-		{ok, Entries} ->
-		    {ok, {list_to_atom(App), Entries}};
-		{error, _} = Err ->
-		    Err
-	    end;
-	_ ->
-	    {error, bad_name}
-    end.
-
-
-build_model(Entries) ->
-    M0 = econfig_model:new(),
-    Model = lists:foldl(fun ({AppName, AppEntries}, Acc) ->
-				econfig_model:add_entries(AppName, AppEntries, Acc)
-			end, M0, Entries),
-    econfig_model:solve_deps(Model).
-
+command(configure) ->
+    configure().
 
 cmd("configure") -> configure;
 cmd("print") -> print;

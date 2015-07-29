@@ -1,0 +1,222 @@
+%%%-------------------------------------------------------------------
+%%% @author Jean Parpaillon <jean.parpaillon@free.fr>
+%%% @copyright (C) 2015, Jean Parpaillon
+%%% @doc
+%%%
+%%% @end
+%%% Created : 23 Jul 2015 by Jean Parpaillon <jean.parpaillon@free.fr>
+%%%-------------------------------------------------------------------
+-module(econfig_srv).
+
+-behaviour(gen_server).
+
+-include("econfig.hrl").
+-include("econfig_log.hrl").
+
+%% API
+-export([start_link/0,
+	 load/1,
+	 models/1,
+	 print/0,
+	 configure/0]).
+
+
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+	 terminate/2, code_change/3]).
+
+-define(SERVER, ?MODULE).
+
+-record(state, {
+	  model :: econfig_model:t(),
+	  config :: econfig_config:t(),
+	  frontend :: econfig_frontend:t()
+	 }).
+
+%%%===================================================================
+%%% API
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Starts the server
+%%
+%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% @end
+%%--------------------------------------------------------------------
+start_link() ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+load(Dirs) ->
+    gen_server:call(?SERVER, {load, Dirs}).
+
+models(Filenames) ->
+    gen_server:call(?SERVER, {models, Filenames}).
+
+print() ->
+    gen_server:call(?SERVER, print).
+
+configure() ->
+    gen_server:call(?SERVER, configure).
+
+%%%===================================================================
+%%% gen_server callbacks
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Initializes the server
+%%
+%% @spec init(Args) -> {ok, State} |
+%%                     {ok, State, Timeout} |
+%%                     ignore |
+%%                     {stop, Reason}
+%% @end
+%%--------------------------------------------------------------------
+init([]) ->
+    {ok, #state{model = econfig_model:new()}}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling call messages
+%%
+%% @spec handle_call(Request, From, State) ->
+%%                                   {reply, Reply, State} |
+%%                                   {reply, Reply, State, Timeout} |
+%%                                   {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, Reply, State} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_call({load, Dirs}, _From, State) ->
+    Filenames = [begin
+		     AppName = filename:basename(Dir),
+		     filename:join([Dir, AppName ++ ".econfig"])
+		 end || Dir <- Dirs],
+    case load_models(Filenames) of
+	{ok, Model} ->
+	    {reply, ok, State#state{model=Model}};
+	{error, _} = Err ->
+	    {reply, Err, State}
+    end;
+
+handle_call({models, Filenames}, _From, State) ->
+    case load_models(Filenames) of
+	{ok, Model} ->
+	    {reply, ok, State#state{model=Model}};
+	{error, _} = Err ->
+	    {reply, Err, State}
+    end;
+
+handle_call(print, _From, #state{model=Model}=State) ->
+    econfig_model:pp(Model),
+    {reply, ok, State};
+
+handle_call(configure, _From, #state{model=Model}=State) ->
+    C = econfig_config:new(Model),
+    F = econfig_frontend:new(Model),
+    case econfig_frontend:run(C, F) of
+	{ok, C1} ->
+	    io:format("~p~n", [econfig_config:export(C1)]),
+	    {reply, ok, State#state{config=C1, frontend=F}};
+	{error, _} = Err ->
+	    {reply, Err, State}
+    end;
+
+handle_call(_Request, _From, State) ->
+    Reply = ok,
+    {reply, Reply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling cast messages
+%%
+%% @spec handle_cast(Msg, State) -> {noreply, State} |
+%%                                  {noreply, State, Timeout} |
+%%                                  {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling all non call/cast messages
+%%
+%% @spec handle_info(Info, State) -> {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any
+%% necessary cleaning up. When it returns, the gen_server terminates
+%% with Reason. The return value is ignored.
+%%
+%% @spec terminate(Reason, State) -> void()
+%% @end
+%%--------------------------------------------------------------------
+terminate(_Reason, _State) ->
+    ok.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert process state when code is changed
+%%
+%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% @end
+%%--------------------------------------------------------------------
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+load_models(Filenames) ->
+    AppEntries = lists:foldl(fun (Filename, Acc) ->
+				     case load_model(Filename) of
+					 {ok, {App, Model}} ->
+					     [{App, Model} | Acc];
+					 {error, bad_name} ->
+					     % Simply ignore bad files
+					     ?warn("Ignoring invalid file ~s~n", [Filename]),
+					     Acc;
+					 {error, _} = Err ->
+					     throw(Err)
+				     end
+			     end, [], Filenames),
+    ConfigModel = build_model(AppEntries),
+    {ok, ConfigModel}.
+
+load_model(Filename) ->
+    case string:tokens(filename:basename(Filename), ".") of
+	[App, "econfig"] ->
+	    case file:consult(Filename) of
+		{ok, Entries} ->
+		    {ok, {list_to_atom(App), Entries}};
+		{error, _} = Err ->
+		    Err
+	    end;
+	_ ->
+	    {error, bad_name}
+    end.
+
+
+build_model(Entries) ->
+    M0 = econfig_model:new(),
+    Model = lists:foldl(fun ({AppName, AppEntries}, Acc) ->
+				econfig_model:add_entries(AppName, AppEntries, Acc)
+			end, M0, Entries),
+    econfig_model:solve_deps(Model).

@@ -6,15 +6,24 @@
   {vsn, git},
   {modules, [
 	     econfig,
+	     econfig_app,
+	     econfig_sup,
+	     econfig_srv,
 	     econfig_model,
 	     econfig_config,
-	     econfig_model
+	     econfig_model,
+	     econfig_frontend,
+	     econfig_log,
+	     econfig_ui_defconfig,
+	     econfig_ui_tty
 	    ]},
   {registered, []},
-  {applications, [kernel,
-		  stdlib,
-		  sasl,
-		  inets]},
+  {mod, {econfig_app, []}},
+  {applications, [kernel
+		  ,stdlib
+		  %,sasl
+		  %,inets
+		 ]},
   {env, [
 	 {frontend, tty}
 	]}
