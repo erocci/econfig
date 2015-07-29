@@ -24,9 +24,10 @@
 	io_lib:format("(~s)", [string:join([ atom_to_list(F) || F <- ?frontends], "|")])).
 
 -define(argspec, [
-		  {frontend, $f, "frontend", {string, "tty"}, "User frontend " ++ ?frontends_str},
-		  {verbose,  $v, "verbose",  integer,         "Verbose (multiple times increase verbosity)"},
-		  {help,     $h, "help",     undefined,       "Show this help"}
+		  {overwrite, $o, "overwrite", {boolean, false}, "Overwrite existing config"},
+		  {frontend,  $f, "frontend",  {string, "tty"},  "User frontend " ++ ?frontends_str},
+		  {verbose,   $v, "verbose",   integer,          "Verbose (multiple times increase verbosity)"},
+		  {help,      $h, "help",      undefined,        "Show this help"}
 		 ]).
 
 main(Args) ->
@@ -63,8 +64,9 @@ configure() ->
 -spec start(Cmd :: econfig_cmd(), Filenames :: [string()], Opts :: econfig_opts()) -> ok.
 start(Cmd, Files, Opts) ->
     application:load(econfig),
-    application:set_env(econfig, frontend, frontend(proplists:get_value(frontend, Opts))),
-    application:set_env(econfig, log,      proplists:get_value(verbose, Opts, 0)),
+    application:set_env(econfig, frontend,  frontend(proplists:get_value(frontend, Opts))),
+    application:set_env(econfig, log,       proplists:get_value(verbose, Opts, 0)),
+    application:set_env(econfig, overwrite, proplists:get_value(overwrite, false)),
     {ok, _} = application:ensure_all_started(econfig),
     case econfig_srv:models(Files) of
 	ok ->
