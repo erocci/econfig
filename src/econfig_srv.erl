@@ -188,6 +188,7 @@ load_models(Filenames) ->
     AppEntries = lists:foldl(fun (Filename, Acc) ->
 				     case load_model(Filename) of
 					 {ok, {App, Model}} ->
+					     ?debug("Loaded model from ~s~n", [Filename]),
 					     [{App, Model} | Acc];
 					 {error, bad_name} ->
 					     % Simply ignore bad files

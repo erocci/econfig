@@ -55,13 +55,19 @@ init([]) ->
     SupFlags = #{strategy => one_for_one,
 		 intensity => 1,
 		 period => 5},
-    Child = #{id => econfig_srv,
-	      start => {econfig_srv, start_link, []},
-	      restart => permanent,
-	      shutdown => 5000,
-	      type => worker,
-	      modules => [econfig_srv]},
-    {ok, {SupFlags, [Child]}}.
+    Srv = #{id => econfig_srv,
+	    start => {econfig_srv, start_link, []},
+	    restart => permanent,
+	    shutdown => 5000,
+	    type => worker,
+	    modules => [econfig_srv]},
+    Log = #{id => econfig_log,
+	    start => {econfig_log, start_link, []},
+	    restart => permanent,
+	    shutdown => 5000,
+	    type => worker,
+	    modules => [econfig_log]},
+    {ok, {SupFlags, [Srv, Log]}}.
 
 %%%===================================================================
 %%% Internal functions

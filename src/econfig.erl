@@ -64,6 +64,7 @@ configure() ->
 start(Cmd, Files, Opts) ->
     application:load(econfig),
     application:set_env(econfig, frontend, frontend(proplists:get_value(frontend, Opts))),
+    application:set_env(econfig, log,      proplists:get_value(verbose, Opts, 0)),
     {ok, _} = application:ensure_all_started(econfig),
     case econfig_srv:models(Files) of
 	ok ->

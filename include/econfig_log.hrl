@@ -1,10 +1,11 @@
 -ifndef(econfig_log_hrl).
 -define(econfig_log_hrl, true).
 
--define(LVL_DEBUG, 0).
--define(LVL_INFO, 1).
--define(LVL_WARN, 2).
--define(LVL_ERROR, 3).
+-define(LVL_DEBUG,  1).
+-define(LVL_INFO,   0).
+-define(LVL_WARN,  -1).
+-define(LVL_ERROR, -2).
+-define(LVL_NO,    -3).
 
 -ifndef(debug).
 -define(debug(Msg), econfig_log:log(?LVL_DEBUG, Msg ++ "~n", [])).
