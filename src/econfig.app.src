@@ -3,7 +3,7 @@
  [
   {id, "econfig"},
   {description, "econfig is a config management system"},
-  {vsn, git},
+  {vsn, "git"},
   {modules, [
 	     econfig,
 	     econfig_app,
