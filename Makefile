@@ -14,5 +14,6 @@ compile:
 
 clean:
 	$(REBAR) clean
+	find -name '*~' -exec rm {} \;
 
 .PHONY: all compile clean
