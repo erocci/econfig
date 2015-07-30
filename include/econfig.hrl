@@ -37,6 +37,7 @@
 		       | {invalid_command, string()}
 		       | {invalid_input, term()}
 		       | {invalid_type, term()}
+		       | {invalid_config, term()}
 		       | eacces.
 
 -define(frontends, [defconfig,tty]).

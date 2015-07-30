@@ -11,10 +11,10 @@
 -include("econfig_log.hrl").
 
 -export([new/1,
+	 load/1,
 	 lookup/2,
 	 set/3,
-	 export/1,
-	 export/2]).
+	 export/1]).
 
 -record state, {
 	  tid        :: ets:tid(),
@@ -26,25 +26,35 @@
 -spec new(Model :: econfig_model:t()) -> t().
 new(Model) ->
     Tid = ets:new(config, []),
-    #state{model=Model, tid=Tid}.
+    case application:get_env(econfig, overwrite, false) of
+	true ->
+	    #state{model=Model, tid=Tid};
+	false ->
+	    load(#state{model=Model, tid=Tid})
+    end.
+
+-spec load(t()) -> t().
+load(S) ->
+    Filename = get_econfig_name(),
+    case file:consult(Filename) of
+	{ok, [Config]} ->
+	    ?info("Load config from ~s~n", [Filename]),
+	    populate(Config, S);
+	{ok, _} ->
+	    {error, {invalid_config, Filename}};
+	{error, _} = Err ->
+	    Err
+    end.
 
 -spec export(t()) -> ok | {error, econfig_err()}.
-export(C) ->
-    case file:get_cwd() of
-	{ok, Dir} -> export(C, Dir);
-	{error, _} = Err -> Err
-    end.
-	    
-
--spec export(t(), Dir :: file:filename()) -> ok | {error, econfig_err()}.
-export(#state{tid=Tid}, Dir) ->
-    Filename = filename:join([Dir, ?econfig_file]),
+export(#state{tid=Tid}) ->
+    Filename = get_econfig_name(),
     case file:open(Filename, [write]) of
 	{ok, File} ->
 	    C = ets:foldl(fun ({{App, Key}, Val}, Acc) ->
 				  [{App, Key, Val} | Acc]
 			  end, [], Tid),
-	    ok = io:fwrite(File, "~p~n", [C]),
+	    ok = io:fwrite(File, "~p.~n", [C]),
 	    file:close(File),
 	    ?info("Config written in ~s~n", [Filename]),
 	    ok;
@@ -57,7 +67,7 @@ export(#state{tid=Tid}, Dir) ->
 lookup(Key, #state{tid=Tid}) ->
     case ets:lookup(Tid, Key) of
 	[] -> undefined;
-	[{_Key, Val} | _] -> Val     % If multiple values, undefined
+	[{_Key, Val} | _] -> {ok, Val}     % If multiple values, undefined
     end.
 
 
@@ -68,3 +78,12 @@ set(Key, Val, #state{tid=Tid}) ->
 %%%
 %%% Priv
 %%%
+-spec populate(econfig_config(), t()) -> t().
+populate(C, S) ->
+    lists:foreach(fun ({App, Key, Val}) ->
+			  set({App, Key}, Val, S)
+		  end, C),
+    S.
+
+get_econfig_name() ->
+    filename:join([application:get_env(econfig, basedir, ""), ?econfig_file]).

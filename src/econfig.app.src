@@ -25,7 +25,8 @@
 		  %,inets
 		 ]},
   {env, [
-	 {frontend, tty}         % default frontend: tty
+	 {basedir, undefined}
+	,{frontend, tty}         % default frontend: tty
 	,{log, 0}                % default log level: INFO
 	,{overwrite, false}      % overwrite config
 	]}
