@@ -12,7 +12,10 @@
 
 % API
 -export([load/1,
-	 configure/0]).
+	 configure/0,
+	 get/2,
+	 get/3,
+	 set/3]).
 
 -include("econfig.hrl").
 -include("econfig_log.hrl").
@@ -52,11 +55,25 @@ main(Args) ->
 	    erlang:halt(1)
     end.
 
+-spec load(Dirs :: [file:filename()]) -> ok | {error, econfig_err()}.
 load(Dirs) ->
     econfig_srv:load(Dirs).
 
+-spec configure() -> {ok, econfig_config:t()} | {error, econfig_err()}.
 configure() ->
     econfig_srv:configure().
+
+-spec get(App :: atom(), Name :: atom()) -> econfig_value() | undefined.
+get(App, Name) ->
+    get(App, Name, undefined).
+
+-spec get(App :: atom(), Name :: atom(), Default :: term()) -> econfig_value() | undefined.
+get(App, Name, Default) ->
+    econfig_srv:get(App, Name, Default).
+
+-spec set(App :: atom(), Name :: atom(), Val :: econfig_value()) -> ok | {error, econfig_err()}.
+set(App, Name, Val) ->
+    econfig_srv:set(App, Name, Val).
 
 %%%
 %%% Private

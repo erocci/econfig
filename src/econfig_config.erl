@@ -67,7 +67,7 @@ export(#state{tid=Tid}) ->
 lookup(Key, #state{tid=Tid}) ->
     case ets:lookup(Tid, Key) of
 	[] -> undefined;
-	[{_Key, Val} | _] -> {ok, Val}     % If multiple values, undefined
+	[{_Key, Val} | _] -> {ok, Val}
     end.
 
 

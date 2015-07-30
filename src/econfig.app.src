@@ -29,5 +29,8 @@
 	,{frontend, tty}         % default frontend: tty
 	,{log, 0}                % default log level: INFO
 	,{overwrite, false}      % overwrite config
-	]}
+	]},
+  {contributors, ["Jean Parpaillon"]},
+  {licenses, ["Apache 2.0"]},
+  {links, [{"Github", "https://github.com/erocci/econfig"}]}
  ]}.

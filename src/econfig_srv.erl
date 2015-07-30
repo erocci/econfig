@@ -18,7 +18,9 @@
 	 load/1,
 	 models/1,
 	 print/0,
-	 configure/0]).
+	 configure/0,
+	 get/3,
+	 set/3]).
 
 
 %% gen_server callbacks
@@ -60,6 +62,12 @@ print() ->
 configure() ->
     gen_server:call(?SERVER, configure).
 
+get(App, Name, Default) ->
+    gen_server:call(?SERVER, {get, App, Name, Default}).
+
+set(App, Name, Val) ->
+    gen_server:call(?SERVER, {set, App, Name, Val}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -92,6 +100,22 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({get, App, Name, Default}, _From, #state{config=C}=State) ->
+    case econfig_config:lookup({App, Name}, C) of
+	undefined -> 
+	    {reply, Default, State};
+	{ok, Val} -> 
+	    {reply, Val, State}
+    end;
+
+handle_call({set, App, Name, Val}, _From, #state{config=C}=State) ->
+    try econfig_config:set({App, Name}, Val, C) of
+	ok ->
+	    {reply, ok, State}
+    catch _:Err ->
+	    {reply, {error, Err}, State}
+    end;
+
 handle_call({load, Dirs}, _From, State) ->
     Filenames = [begin
 		     AppName = filename:basename(Dir),
