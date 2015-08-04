@@ -42,8 +42,11 @@ load(S) ->
 	    populate(Config, S);
 	{ok, _} ->
 	    {error, {invalid_config, Filename}};
-	{error, _} = Err ->
-	    Err
+	{error, enoent} ->
+	    S;
+	{error, Err} ->
+	    ?warn("Can not read configuration: ~p~n", [Err]),
+	    S
     end.
 
 -spec export(t()) -> ok | {error, econfig_err()}.

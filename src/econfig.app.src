@@ -21,8 +21,7 @@
   {mod, {econfig_app, []}},
   {applications, [kernel
 		  ,stdlib
-		  %,sasl
-		  %,inets
+		  ,getopt
 		 ]},
   {env, [
 	 {basedir, undefined}
