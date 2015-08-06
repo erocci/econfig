@@ -56,7 +56,7 @@ print() ->
 
 -spec configure() -> {ok, econfig_config:t()} | {error, term()}.
 configure() ->
-    gen_server:call(?SERVER, configure).
+    gen_server:call(?SERVER, configure, infinity).
 
 get(App, Name, Default) ->
     gen_server:call(?SERVER, {get, App, Name, Default}).
@@ -200,6 +200,9 @@ load_models(Filenames) ->
 					     ?debug("Loaded model from ~s~n", [Filename]),
 					     [{App, Model} | Acc];
 					 {error, enoent} ->
+					     Acc;
+					 {error, {Line, erl_parse, ParseErr}} ->
+					     ?warn("Error parsing ~s, line ~p: ~s", [Filename, Line, ParseErr]),
 					     Acc;
 					 {error, _} = Err ->
 					     throw(Err)
