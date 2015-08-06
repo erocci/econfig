@@ -16,7 +16,6 @@
 %% API
 -export([start_link/0,
 	 load/1,
-	 models/1,
 	 print/0,
 	 configure/0,
 	 get/3,
@@ -51,9 +50,6 @@ start_link() ->
 
 load(Dirs) ->
     gen_server:call(?SERVER, {load, Dirs}).
-
-models(Filenames) ->
-    gen_server:call(?SERVER, {models, Filenames}).
 
 print() ->
     gen_server:call(?SERVER, print).
@@ -117,18 +113,7 @@ handle_call({set, App, Name, Val}, _From, #state{config=C}=State) ->
     end;
 
 handle_call({load, Dirs}, _From, State) ->
-    Filenames = [begin
-		     AppName = filename:basename(Dir),
-		     filename:join([Dir, AppName ++ ".econfig"])
-		 end || Dir <- Dirs],
-    case load_models(Filenames) of
-	{ok, Model} ->
-	    {reply, ok, State#state{model=Model}};
-	{error, _} = Err ->
-	    {reply, Err, State}
-    end;
-
-handle_call({models, Filenames}, _From, State) ->
+    Filenames = [ filename:join([Dir, "Econfig"]) || Dir <- Dirs],
     case load_models(Filenames) of
 	{ok, Model} ->
 	    {reply, ok, State#state{model=Model}};
@@ -214,9 +199,7 @@ load_models(Filenames) ->
 					 {ok, {App, Model}} ->
 					     ?debug("Loaded model from ~s~n", [Filename]),
 					     [{App, Model} | Acc];
-					 {error, bad_name} ->
-					     % Simply ignore bad files
-					     ?warn("Ignoring invalid file ~s~n", [Filename]),
+					 {error, enoent} ->
 					     Acc;
 					 {error, _} = Err ->
 					     throw(Err)
@@ -226,16 +209,12 @@ load_models(Filenames) ->
     {ok, ConfigModel}.
 
 load_model(Filename) ->
-    case string:tokens(filename:basename(Filename), ".") of
-	[App, "econfig"] ->
-	    case file:consult(Filename) of
-		{ok, Entries} ->
-		    {ok, {list_to_atom(App), Entries}};
-		{error, _} = Err ->
-		    Err
-	    end;
-	_ ->
-	    {error, bad_name}
+    App = filename:basename(filename:dirname(Filename)),
+    case file:consult(Filename) of
+	{ok, Entries} ->
+	    {ok, {list_to_atom(App), Entries}};
+	{error, _} = Err ->
+	    Err
     end.
 
 

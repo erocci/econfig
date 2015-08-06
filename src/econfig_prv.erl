@@ -61,5 +61,5 @@ all_app_dirs(State) ->
 configure(State, AppInfo) ->
     ?info("Configuring ~s", [rebar_app_info:name(AppInfo)]),
     econfig:load(all_app_dirs(State)),
-    ?info("Create files: ~p", [rebar_state:get(State, config_files, [])]),
+    ?info("Create files: ~p", [rebar_state:get(State, econfig_files, [])]),
     {ok, State}.

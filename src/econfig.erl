@@ -40,13 +40,13 @@
 
 main(Args) ->
     case getopt:parse(?argspec, Args) of
-	{ok, {Opts, [Cmd | Files]}} ->
+	{ok, {Opts, [Cmd | Dirs]}} ->
 	    case proplists:get_bool(help, Opts) of
 		true ->
 		    usage(),
 		    erlang:halt(0);
 		false ->
-		    try start(cmd(Cmd), Files, Opts) of
+		    try start(cmd(Cmd), Dirs, Opts) of
 			ok ->
 			    erlang:halt(0);
 			{error, Err} ->
@@ -97,8 +97,8 @@ format_error(Reason) ->
 %%%
 %%% Private
 %%%
--spec start(Cmd :: econfig_cmd(), Filenames :: [string()], Opts :: econfig_opts()) -> ok.
-start(Cmd, Files, Opts) ->
+-spec start(Cmd :: econfig_cmd(), Dirs :: [string()], Opts :: econfig_opts()) -> ok.
+start(Cmd, Dirs, Opts) ->
     application:load(econfig),
     application:set_env(econfig, frontend,  frontend(proplists:get_value(frontend, Opts))),
     application:set_env(econfig, log,       proplists:get_value(verbose, Opts, 0)),
@@ -106,7 +106,7 @@ start(Cmd, Files, Opts) ->
     {ok, Dir} = file:get_cwd(),
     application:set_env(econfig, basedir,   Dir),
     {ok, _} = application:ensure_all_started(econfig),
-    case econfig_srv:models(Files) of
+    case econfig_srv:load(Dirs) of
 	ok ->
 	    command(Cmd);
 	{error, _} = Err ->
@@ -139,9 +139,9 @@ frontend(Frontend) ->
 
 usage() ->
     getopt:usage(?argspec, atom_to_list(?MODULE), 
-		 "command <appname.econfig ...>",
+		 "command <dir ...>",
 		 [{"command", "configure | print"},
-		  {"<appname.econfig ...>", "List of appname.econfig files to consult (ignore invalid extensions)"}]),
+		  {"<dir ...>", "List of dirs containing Econfig files"}]),
     ok.
 
 
