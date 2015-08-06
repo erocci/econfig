@@ -5,3 +5,5 @@
 /rebar.lock
 /_build
 /econfig
+/.rebar3
+/ebin

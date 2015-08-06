@@ -36,7 +36,6 @@
 %% @end
 %%--------------------------------------------------------------------
 start(_StartType, _StartArgs) ->
-    ?info("Starting econfig"),
     case econfig_sup:start_link() of
 	{ok, Pid} ->
 	    {ok, Pid};

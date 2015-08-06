@@ -7,8 +7,13 @@
 
 -module(econfig).
 
+-behaviour(provider).
+
 % Script mode
 -export([main/1]).
+
+% provider behaviour
+-export([init/1, do/1, format_error/1]).
 
 % API
 -export([load/1,
@@ -74,6 +79,20 @@ get(App, Name, Default) ->
 -spec set(App :: atom(), Name :: atom(), Val :: econfig_value()) -> ok | {error, econfig_err()}.
 set(App, Name, Val) ->
     econfig_srv:set(App, Name, Val).
+
+%%%
+%%% Provider API
+%%%
+
+init(State) ->
+    {ok, State1} = econfig_prv:init(State),
+    {ok, State1}.
+
+do(State) ->
+    {ok, State}.
+
+format_error(Reason) ->
+    io_lib:format("~p", [Reason]).
 
 %%%
 %%% Private

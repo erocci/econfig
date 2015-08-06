@@ -51,11 +51,13 @@ log(Lvl, Msg, Data) ->
 %%%
 init() ->
     LogLevel = application:get_env(econfig, log, ?LVL_INFO),
-    case application:get_env(econfig, escript, false) of
-	false ->
-	    loop_erts(LogLevel);
-	true ->
-	    loop_tty(LogLevel)
+    case application:get_env(econfig, caller, escript) of
+	escript ->
+	    loop_tty(LogLevel);
+	rebar ->
+	    loop_rebar(LogLevel);
+	_ ->
+	    loop_erts(LogLevel)
     end.
 
 
@@ -97,3 +99,20 @@ log_tty(?LVL_WARN, Msg, Data) ->
     io:format(standard_error, "W: " ++ Msg, Data);
 log_tty(?LVL_ERROR, Msg, Data) ->
     io:format(standard_error, "E: " ++ Msg, Data).
+
+
+loop_rebar(_) ->
+    receive
+	{log, Lvl, Msg, Data} ->
+	    case Lvl of
+		?LVL_DEBUG ->
+		    rebar_log:log(debug, Msg, Data);
+		?LVL_INFO ->
+		    rebar_log:log(info, Msg, Data);
+		?LVL_WARN ->
+		    rebar_log:log(warn, Msg, Data);
+		?LVL_ERROR ->
+		    rebar_log:log(error, Msg, Data)
+	    end,
+	    loop_rebar([])
+    end.
