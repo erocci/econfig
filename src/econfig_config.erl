@@ -14,7 +14,10 @@
 	 load/1,
 	 lookup/2,
 	 set/3,
-	 export/1]).
+	 store/1,
+	 render/3,
+	 render/4,
+	 hash/2]).
 
 -record state, {
 	  tid        :: ets:tid(),
@@ -30,39 +33,54 @@ new(Model) ->
 	true ->
 	    #state{model=Model, tid=Tid};
 	false ->
-	    load(#state{model=Model, tid=Tid})
+	    case load(#state{model=Model, tid=Tid}) of
+		{error, Err} -> throw(Err);
+		#state{} = S -> S
+	    end
     end.
 
 -spec load(t()) -> t().
 load(S) ->
     Filename = get_econfig_name(),
     case file:consult(Filename) of
-	{ok, [Config]} ->
-	    ?info("Load config from ~s~n", [Filename]),
+	{ok, Config} ->
+	    ?info("Load config from ~s", [Filename]),
 	    populate(Config, S);
-	{ok, _} ->
-	    {error, {invalid_config, Filename}};
 	{error, enoent} ->
 	    S;
 	{error, Err} ->
-	    ?warn("Can not read configuration: ~p~n", [Err]),
+	    ?warn("Can not read configuration: ~p", [Err]),
 	    S
     end.
 
--spec export(t()) -> ok | {error, econfig_err()}.
-export(#state{tid=Tid}) ->
+-spec store(t()) -> ok | {error, econfig_err()}.
+store(#state{}=S) ->
     Filename = get_econfig_name(),
-    case file:open(Filename, [write]) of
-	{ok, File} ->
-	    C = ets:foldl(fun ({{App, Key}, Val}, Acc) ->
-				  [{App, Key, Val} | Acc]
-			  end, [], Tid),
-	    ok = io:fwrite(File, "~p.~n", [C]),
-	    file:close(File),
-	    ?info("Config written in ~s~n", [Filename]),
+    ?debug("Writing config to ~s", [Filename]),
+    case file:write_file(Filename, [ io_lib:format("~tp.~n", [Term]) || Term <- to_list(S) ]) of
+	ok ->
+	    ?info("Config written in ~s", [Filename]),
 	    ok;
 	{error, _} = Err ->
 	    Err
+    end.
+
+
+-spec render(LocalNS :: atom(), Filename :: file:name_all(), Config :: t()) -> ok | {error, econfig_err()}.
+render(LocalNS, Target, Config) ->
+    render(LocalNS, Target, #{}, Config).
+
+
+-spec render(LocalNS :: atom(), Filename :: file:name_all(), Data :: #{}, Config :: t()) -> ok | {error, econfig_err()}.
+render(LocalNS, Target, Data, #state{}=Config) ->
+    TmplName = Target ++ ".in",
+    case filelib:is_regular(TmplName) of
+	true ->
+	    Tmpl = bbmustache:parse_file(TmplName),
+	    Data2 = hash(LocalNS, Data, Config),
+	    file:write_file(Target, bbmustache:compile(Tmpl, Data2));
+	false ->
+	    throw({missing_source, TmplName})
     end.
 
 
@@ -78,15 +96,50 @@ lookup(Key, #state{tid=Tid}) ->
 set(Key, Val, #state{tid=Tid}) ->
     ets:insert(Tid, {Key, Val}).
 
+
+-spec hash(Data :: #{}, Config :: t()) -> #{}.
+hash(Data, Config) ->
+    hash(undefined, Data, Config).
+
 %%%
 %%% Priv
 %%%
+hash(LocalNS, Data, #state{tid=Tid}) ->
+    ets:foldl(fun ({{App, Key}, Val}, Acc) ->
+		      Acc2 = case App of
+				 LocalNS -> Acc#{ atom_to_list(Key) => Val };
+				 _ -> Acc
+			     end,
+		      Acc2#{ render_key(App, Key) => Val }
+	      end, Data, Tid).
+
+
 -spec populate(econfig_config(), t()) -> t().
 populate(C, S) ->
-    lists:foreach(fun ({App, Key, Val}) ->
-			  set({App, Key}, Val, S)
+    lists:foreach(fun ({Key, Val}) ->
+			  set(parse_key(Key), Val, S)
 		  end, C),
     S.
+
+
+to_list(#state{tid=Tid}) ->
+    ets:foldl(fun ({{App, Key}, Val}, Acc) ->
+		      [{render_key(App, Key), Val} | Acc]
+	      end, [], Tid).
+
+
+parse_key(Key) ->
+    case string:tokens(Key, ".") of
+	[App | Rest] ->
+	    {list_to_atom(App), list_to_atom(string:join(Rest, "."))};
+	_ ->
+	    throw({badendtry, Key})
+    end.
+
+
+render_key(App, Key) ->
+    string:join([atom_to_list(App), atom_to_list(Key)], ".").
+
 
 get_econfig_name() ->
     filename:join([application:get_env(econfig, basedir, ""), ?econfig_file]).

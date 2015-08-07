@@ -42,7 +42,7 @@ terminate(_Ref) ->
 %%% Priv
 %%%
 prompt({{App, Key}, Desc, Type, Default, _}) ->
-    io_lib:format("(~p:~p) ~s [~s] : ", [App, Key, Desc, prompt_default(Type, Default)]).
+    io_lib:format("(~p.~p) ~s [~s] : ", [App, Key, Desc, prompt_default(Type, Default)]).
 
 prompt_default(boolean, true) -> "Y/n";
 prompt_default(boolean, false) -> "n/Y";

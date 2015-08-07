@@ -41,7 +41,11 @@ new() ->
     #model{ev=EV_Tid, deps=Deps_Tid, graph=G, root=Root}.
 
 
--spec add_entries(AppName :: atom(), AppModel :: [econfig_entry()], t()) -> t().
+-spec add_entries(AppName :: binary() | string() | atom(), AppModel :: [econfig_entry()], t()) -> t().
+add_entries(AppName, AppModel, Model) when is_binary(AppName) ->
+    add_entries(list_to_atom(binary_to_list(AppName)), AppModel, Model);
+add_entries(AppName, AppModel, Model) when is_list(AppName) ->
+    add_entries(list_to_atom(AppName), AppModel, Model);
 add_entries(AppName, AppModel, Model) ->
     lists:foldl(fun ({Key, Desc, Type, Dft, Opts}, Acc) -> 
 			add_entry({AppName, Key}, Desc, Type, Dft, Opts, Acc)

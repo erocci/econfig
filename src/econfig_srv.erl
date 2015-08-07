@@ -20,7 +20,9 @@
 	 print/0,
 	 configure/0,
 	 get/3,
-	 set/3]).
+	 set/3,
+	 hash/0,
+	 hash/1]).
 
 
 %% gen_server callbacks
@@ -67,6 +69,14 @@ get(App, Name, Default) ->
 
 set(App, Name, Val) ->
     gen_server:call(?SERVER, {set, App, Name, Val}).
+
+-spec hash() -> #{}.
+hash() ->
+    hash(#{}).
+
+-spec hash(Data :: #{}) -> #{}.
+hash(Data) ->
+    gen_server:call(?SERVER, {hash, Data}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -146,6 +156,12 @@ handle_call(configure, _From, #state{model=Model}=State) ->
 	{error, _} = Err ->
 	    {reply, Err, State}
     end;
+
+handle_call({hash, Data}, _From, #state{config=undefined}=S) ->
+    {reply, Data, S};
+
+handle_call({hash, Data}, _From, #state{config=C}=S) ->
+    {reply, econfig_config:hash(Data, C), S};
 
 handle_call(_Request, _From, State) ->
     Reply = ok,

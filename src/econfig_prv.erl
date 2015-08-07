@@ -42,9 +42,19 @@ init(State) ->
 -spec do(rebar_state:t()) -> {ok, rebar_state:t()} | {error, string()}.
 do(State) ->
     ?info("Configuring the build...", []),
-    econfig:models(apps_config_model(State)),
-    econfig:configure(),
-    {ok, State}.
+    econfig:models(foreach_apps(fun (AppState, AppInfo) ->
+                                        app_config_model(AppState, AppInfo)
+                                end, State)),
+    case econfig:configure() of
+        {ok, C} ->
+            econfig_config:store(C),
+            foreach_apps(fun (AppState, AppInfo) ->
+                                 render_app_templates(AppState, AppInfo, C)
+                         end, State),
+            {ok, State};
+        {error, _} = Err ->
+            Err
+    end.
 
 
 -spec format_error(any()) -> iolist().
@@ -54,14 +64,23 @@ format_error(Reason) ->
 %%
 %% Private
 %%
-apps_config_model(State) ->
+foreach_apps(Fun, State) ->
     ProjectApps = rebar_state:project_apps(State),
     Deps = rebar_state:all_deps(State),
-    [ app_config_model(State, App) || App <- ProjectApps ++ Deps ].
+    [ Fun(rebar_app_info:state_or_new(State, App), App) || App <- ProjectApps ++ Deps ].
 
 
-app_config_model(State, AppInfo) ->
-    AppName = rebar_app_info:name(AppInfo),
-    ?debug("Load configuration entries for app: ~s", [AppName]),
-    S = rebar_app_info:state_or_new(State, AppInfo),
-    { AppName, rebar_state:get(S, econfig, [])}.
+app_config_model(State, Info) ->
+    AppName = rebar_app_info:name(Info),
+    ?debug("Load configuration entries for ~s", [AppName]),
+    { AppName, rebar_state:get(State, econfig, [])}.
+
+
+render_app_templates(State, Info, Config) ->
+    AppName = rebar_app_info:name(Info),
+    case rebar_state:get(State, econfig_files, []) of
+        [] -> ok;
+        Files ->
+            ?debug("Rendering templates for ~s: ~p", [AppName, Files]),
+            [ econfig_config:render(list_to_atom(binary_to_list(AppName)), File, #{}, Config) || File <- Files ]
+    end.

@@ -33,11 +33,12 @@
 
 -type econfig_err()   :: {invalid_filename, string()}
 		       | {cycle, term()}
-		       | {badentry, econfig_entry_key()}
+		       | {badentry, term()}
 		       | {invalid_command, string()}
 		       | {invalid_input, term()}
 		       | {invalid_type, term()}
 		       | {invalid_config, term()}
+		       | {missing_source, term()}
 		       | eacces.
 
 -define(frontends, [defconfig,tty]).

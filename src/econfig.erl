@@ -21,7 +21,8 @@
 	 configure/0,
 	 get/2,
 	 get/3,
-	 set/3]).
+	 set/3,
+	 script/2]).
 
 -include("econfig.hrl").
 -include("econfig_log.hrl").
@@ -85,6 +86,28 @@ get(App, Name, Default) ->
 set(App, Name, Val) ->
     econfig_srv:set(App, Name, Val).
 
+-spec script(Config :: [term()], Script :: file:file_all()) -> [term()].
+script(Config, ScriptName) ->
+    Basename = filename:basename(ScriptName, ".script"),
+    TmplName = Basename ++ ".in",
+    case filelib:is_regular(TmplName) of
+	true ->
+	    Tmpfile = econfig_utils:mktemp(Basename),
+	    Data = econfig_srv:hash(),
+	    Bin = bbmustache:compile(bbmustache:parse_file(TmplName), Data),
+	    file:write_file(Tmpfile, Bin),
+	    case file:consult(Tmpfile) of
+		{ok, Terms} ->
+		    file:delete(Tmpfile),
+		    Config ++ Terms;
+		{error, Err} ->
+		    throw(Err)
+	    end;
+	false ->
+	    Config
+    end.
+
+
 %%%
 %%% Provider API
 %%%
@@ -125,7 +148,7 @@ command(print) ->
 command(configure) ->
     case econfig_srv:configure() of
 	{ok, C} ->
-	    econfig_config:export(C);
+	    econfig_config:store(C);
 	{error, Err} ->
 	    handle_error(Err)
     end.
@@ -162,6 +185,10 @@ handle_error({badentry, {App, Key}}) ->
     io:format("E: Invalid key: ~p:~p~n", [App, Key]),
     erlang:halt(1);
 
+handle_error({badentry, Key}) ->
+    io:format("E: Invalid key: ~p~n", [Key]),
+    erlang:halt(1);
+
 handle_error({invalid_command, V}) ->
     io:format("E: Invalid command: ~p~n", [V]),
     erlang:halt(1);
@@ -172,6 +199,10 @@ handle_error({invalid_frontend, V}) ->
 
 handle_error({invalid_input, V}) ->
     io:format("E: Invalid user input: ~p~n", [V]),
+    erlang:halt(1);
+
+handle_error({missing_source, F}) ->
+    io:format("E: Missing template source: ~s.in~n", [F]),
     erlang:halt(1);
 
 handle_error(Err) ->
