@@ -41,8 +41,9 @@ init(State) ->
 
 -spec do(rebar_state:t()) -> {ok, rebar_state:t()} | {error, string()}.
 do(State) ->
-    ProjectApps = rebar_state:project_apps(State),
-    [ configure(State, App) || App <- ProjectApps ],
+    ?info("Configuring the build...", []),
+    econfig:models(apps_config_model(State)),
+    econfig:configure(),
     {ok, State}.
 
 
@@ -53,13 +54,14 @@ format_error(Reason) ->
 %%
 %% Private
 %%
-all_app_dirs(State) ->
-    Deps = rebar_state:lock(State),
-    Apps = rebar_state:project_apps(State),
-    [ rebar_app_info:dir(App) || App <- Apps ++ Deps ].
+apps_config_model(State) ->
+    ProjectApps = rebar_state:project_apps(State),
+    Deps = rebar_state:all_deps(State),
+    [ app_config_model(State, App) || App <- ProjectApps ++ Deps ].
 
-configure(State, AppInfo) ->
-    ?info("Configuring ~s", [rebar_app_info:name(AppInfo)]),
-    econfig:load(all_app_dirs(State)),
-    ?info("Create files: ~p", [rebar_state:get(State, econfig_files, [])]),
-    {ok, State}.
+
+app_config_model(State, AppInfo) ->
+    AppName = rebar_app_info:name(AppInfo),
+    ?debug("Load configuration entries for app: ~s", [AppName]),
+    S = rebar_app_info:state_or_new(State, AppInfo),
+    { AppName, rebar_state:get(S, econfig, [])}.

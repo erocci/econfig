@@ -17,6 +17,7 @@
 
 % API
 -export([load/1,
+	 models/1,
 	 configure/0,
 	 get/2,
 	 get/3,
@@ -63,6 +64,10 @@ main(Args) ->
 -spec load(Dirs :: [file:filename()]) -> ok | {error, econfig_err()}.
 load(Dirs) ->
     econfig_srv:load(Dirs).
+
+-spec models(Models :: [{App :: atom(), Model :: [econfig_entry()]}]) -> ok | {error, econfig_err()}.
+models(Models) ->
+    econfig_srv:models(Models).
 
 -spec configure() -> {ok, econfig_config:t()} | {error, econfig_err()}.
 configure() ->

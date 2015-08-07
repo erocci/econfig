@@ -16,6 +16,7 @@
 %% API
 -export([start_link/0,
 	 load/1,
+	 models/1,
 	 print/0,
 	 configure/0,
 	 get/3,
@@ -50,6 +51,9 @@ start_link() ->
 
 load(Dirs) ->
     gen_server:call(?SERVER, {load, Dirs}).
+
+models(Models) ->
+    gen_server:call(?SERVER, {models, Models}).
 
 print() ->
     gen_server:call(?SERVER, print).
@@ -119,6 +123,14 @@ handle_call({load, Dirs}, _From, State) ->
 	    {reply, ok, State#state{model=Model}};
 	{error, _} = Err ->
 	    {reply, Err, State}
+    end;
+
+handle_call({models, Models}, _From, State) ->
+    try compile(Models) of
+	ConfigModel ->
+	    {reply, ok, State#state{model=ConfigModel}}
+    catch throw:Err ->
+	    {reply, {error, Err}, State}
     end;
 
 handle_call(print, _From, #state{model=Model}=State) ->
@@ -208,7 +220,7 @@ load_models(Filenames) ->
 					     throw(Err)
 				     end
 			     end, [], Filenames),
-    ConfigModel = build_model(AppEntries),
+    ConfigModel = compile(AppEntries),
     {ok, ConfigModel}.
 
 load_model(Filename) ->
@@ -221,7 +233,7 @@ load_model(Filename) ->
     end.
 
 
-build_model(Entries) ->
+compile(Entries) ->
     M0 = econfig_model:new(),
     Model = lists:foldl(fun ({AppName, AppEntries}, Acc) ->
 				econfig_model:add_entries(AppName, AppEntries, Acc)
