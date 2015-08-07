@@ -41,7 +41,7 @@ init(State) ->
 
 -spec do(rebar_state:t()) -> {ok, rebar_state:t()} | {error, string()}.
 do(State) ->
-    ?info("Configuring the build...", []),
+    ?info("Configuring application...", []),
     econfig:models(foreach_apps(fun (AppState, AppInfo) ->
                                         app_config_model(AppState, AppInfo)
                                 end, State)),
