@@ -61,13 +61,7 @@ init([]) ->
 	    shutdown => 5000,
 	    type => worker,
 	    modules => [econfig_srv]},
-    Log = #{id => econfig_log,
-	    start => {econfig_log, start_link, []},
-	    restart => permanent,
-	    shutdown => 5000,
-	    type => worker,
-	    modules => [econfig_log]},
-    {ok, {SupFlags, [Srv, Log]}}.
+    {ok, {SupFlags, [Srv]}}.
 
 %%%===================================================================
 %%% Internal functions

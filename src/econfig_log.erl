@@ -9,8 +9,6 @@
 
 -include("econfig_log.hrl").
 
--export([start_link/0]).
-
 -export([debug/1,
 	 debug/2,
 	 info/1,
@@ -20,14 +18,6 @@
 	 error/1,
 	 error/2,
 	 log/3]).
-
-%% Internals
--export([init/0]).
-
-start_link() ->
-    Pid = spawn_link(?MODULE, init, []),
-    register(?MODULE, Pid),
-    {ok, Pid}.
 
 debug(Msg) -> log(?LVL_DEBUG, Msg ++ "~n", []).
 debug(Msg, Data) -> log(?LVL_DEBUG, Msg, Data).
@@ -42,34 +32,20 @@ error(Msg) -> log(?LVL_ERROR, Msg ++ "~n", []).
 error(Msg, Data) -> log(?LVL_ERROR, Msg, Data).
 
 log(Lvl, Msg, Data) ->
-    try ?MODULE ! {log, Lvl, Msg, Data}
-    catch error:badarg -> log_tty(Lvl, Msg, Data)
-    end.
-
+    MaxLevel = application:get_env(econfig, log, ?LVL_INFO),
+    Handler = application:get_env(econfig, caller, escript),
+    do_log(Handler, Lvl, Msg, Data, MaxLevel).
 %%%
 %%% Priv
 %%%
-init() ->
-    LogLevel = application:get_env(econfig, log, ?LVL_INFO),
-    case application:get_env(econfig, caller, escript) of
-	escript ->
-	    loop_tty(LogLevel);
-	rebar ->
-	    loop_rebar(LogLevel);
-	_ ->
-	    loop_erts(LogLevel)
-    end.
-
-
-loop_erts(MaxLevel) ->
-    receive
-	{log, Lvl, Msg, Data} when Lvl =< MaxLevel ->
-	    log_erts(Lvl, Msg, Data),
-	    loop_erts(MaxLevel);
-	{log, _, _, _} ->
-	    loop_erts(MaxLevel)
-    end.
-
+do_log(escript, Lvl, Msg, Data, Max) when Lvl =< Max ->
+    log_tty(Lvl, Msg, Data);
+do_log(rebar, Lvl, Msg, Data, Max) when Lvl =< Max ->
+    log_rebar(Lvl, Msg, Data);
+do_log(_, Lvl, Msg, Data, Max) when Lvl =< Max ->
+    log_erts(Lvl, Msg, Data);
+do_log(_, _, _, _, _) ->
+    ok.
 
 log_erts(?LVL_DEBUG, Msg, Data) ->
     error_logger:info_msg(Msg, Data);
@@ -79,16 +55,6 @@ log_erts(?LVL_WARN, Msg, Data) ->
     error_logger:warning_msg(Msg, Data);
 log_erts(?LVL_ERROR, Msg, Data) ->
     error_logger:error_msg(Msg, Data).
-
-
-loop_tty(MaxLevel) ->
-    receive
-	{log, Lvl, Msg, Data} when Lvl =< MaxLevel ->
-	    log_tty(Lvl, Msg, Data),
-	    loop_tty(MaxLevel);
-	{log, _, _, _} ->
-	    loop_tty(MaxLevel)
-    end.
 
 
 log_tty(?LVL_DEBUG, Msg, Data) ->
@@ -101,18 +67,11 @@ log_tty(?LVL_ERROR, Msg, Data) ->
     io:format(standard_error, "E: " ++ Msg, Data).
 
 
-loop_rebar(_) ->
-    receive
-	{log, Lvl, Msg, Data} ->
-	    case Lvl of
-		?LVL_DEBUG ->
-		    rebar_log:log(debug, Msg, Data);
-		?LVL_INFO ->
-		    rebar_log:log(info, Msg, Data);
-		?LVL_WARN ->
-		    rebar_log:log(warn, Msg, Data);
-		?LVL_ERROR ->
-		    rebar_log:log(error, Msg, Data)
-	    end,
-	    loop_rebar([])
-    end.
+log_rebar(?LVL_DEBUG, Msg, Data) ->
+    rebar_log:log(debug, Msg, Data);
+log_rebar(?LVL_INFO, Msg, Data) ->
+    rebar_log:log(info, Msg, Data);
+log_rebar(?LVL_WARN, Msg, Data) ->
+    rebar_log:log(warn, Msg, Data);
+log_rebar(?LVL_ERROR, Msg, Data) ->
+    rebar_log:log(error, Msg, Data).
