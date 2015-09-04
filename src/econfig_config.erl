@@ -10,30 +10,30 @@
 -include("econfig.hrl").
 -include("econfig_log.hrl").
 
--export([new/1,
+-export([new/0,
 	 load/1,
 	 lookup/2,
 	 set/3,
 	 store/1,
+	 clean/0,
 	 render/3,
 	 render/4,
 	 hash/2]).
 
 -record state, {
-	  tid        :: ets:tid(),
-	  model      :: econfig_model:t()
+	  tid        :: ets:tid()
 	 }.
 -type t() :: #state{}.
 -export_type([t/0]).
 
--spec new(Model :: econfig_model:t()) -> t().
-new(Model) ->
+-spec new() -> t().
+new() ->
     Tid = ets:new(config, []),
     case application:get_env(econfig, overwrite, false) of
 	true ->
-	    #state{model=Model, tid=Tid};
+	    #state{tid=Tid};
 	false ->
-	    case load(#state{model=Model, tid=Tid}) of
+	    case load(#state{tid=Tid}) of
 		{error, Err} -> throw(Err);
 		#state{} = S -> S
 	    end
@@ -65,6 +65,10 @@ store(#state{}=S) ->
 	    Err
     end.
 
+-spec clean() -> ok.
+clean() ->
+    file:delete(get_econfig_name()),
+    ok.
 
 -spec render(LocalNS :: atom(), Filename :: file:name_all(), Config :: t()) -> ok | {error, econfig_err()}.
 render(LocalNS, Target, Config) ->
