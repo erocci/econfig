@@ -94,7 +94,8 @@ hash(Data) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{model = econfig_model:new()}}.
+    {ok, #state{model = econfig_model:new(), 
+		config = econfig_config:new()}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -147,8 +148,7 @@ handle_call(print, _From, #state{model=Model}=State) ->
     econfig_model:pp(Model),
     {reply, ok, State};
 
-handle_call(configure, _From, #state{model=Model}=State) ->
-    C = econfig_config:new(Model),
+handle_call(configure, _From, #state{model=Model, config=C}=State) ->
     F = econfig_frontend:new(Model),
     case econfig_frontend:run(C, F) of
 	{ok, C1} ->

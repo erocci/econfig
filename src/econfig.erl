@@ -21,8 +21,7 @@
 	 configure/0,
 	 get/2,
 	 get/3,
-	 set/3,
-	 script/2]).
+	 set/3]).
 
 -include("econfig.hrl").
 -include("econfig_log.hrl").
@@ -86,35 +85,14 @@ get(App, Name, Default) ->
 set(App, Name, Val) ->
     econfig_srv:set(App, Name, Val).
 
--spec script(Config :: [term()], Script :: file:file_all()) -> [term()].
-script(Config, ScriptName) ->
-    Basename = filename:basename(ScriptName, ".script"),
-    TmplName = Basename ++ ".in",
-    case filelib:is_regular(TmplName) of
-	true ->
-	    Tmpfile = econfig_utils:mktemp(Basename),
-	    Data = econfig_srv:hash(),
-	    Bin = bbmustache:compile(bbmustache:parse_file(TmplName), Data),
-	    file:write_file(Tmpfile, Bin),
-	    case file:consult(Tmpfile) of
-		{ok, Terms} ->
-		    file:delete(Tmpfile),
-		    Config ++ Terms;
-		{error, Err} ->
-		    throw(Err)
-	    end;
-	false ->
-	    Config
-    end.
-
-
 %%%
 %%% Provider API
 %%%
 
 init(State) ->
-    {ok, State1} = econfig_prv:init(State),
-    {ok, State1}.
+    econfig_rebar:init(rebar_dir:root_dir(State)),
+    {ok, State1} = econfig_prv_configure:init(State),
+    econfig_prv_clean:init(State1).
 
 do(State) ->
     {ok, State}.
