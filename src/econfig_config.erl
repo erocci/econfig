@@ -49,7 +49,7 @@ new(Econfig) ->
 load(Filename, S) ->
     case file:consult(Filename) of
 	{ok, Config} ->
-	    ?info("Load config from ~s", [Filename]),
+	    ?debug("Load config from ~s", [Filename]),
 	    populate(Config, S);
 	{error, _} = Err ->
 	    ?debug("No config found in ~s", [Filename]),
