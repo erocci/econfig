@@ -10,34 +10,62 @@
 -include("econfig.hrl").
 -include("econfig_log.hrl").
 
+-define(KEY, 'econfig.state').
+
 -export([init/1,
-	 script/2]).
+	 state/1,
+	 state/2,
+	 fold_apps/3,
+	 script/3]).
 
-init(Basedir) ->
-    application:set_env(econfig, basedir, Basedir),
-    application:set_env(econfig, caller, rebar),
-    application:set_env(econfig, log, 100),
-    application:ensure_all_started(econfig).
+-spec init(rebar_state:t()) -> econfig_state:t().
+init(Rebar) ->
+    Basedir = rebar_dir:base_dir(Rebar),
+    Ecfg = init_(Basedir),
+    rebar_state:set(Rebar, ?KEY, Ecfg).
 
--spec script(Config :: [term()], Script :: file:file_all()) -> [term()].
-script(Config, ScriptName) ->
-    econfig_rebar:init(filename:dirname(ScriptName)),
-    Basename = filename:basename(ScriptName, ".script"),
-    TmplName = Basename ++ ".in",
-    case filelib:is_regular(TmplName) of
-	true ->
-	    ?debug("Generates config from template: ~p", [TmplName]),
-	    Tmpfile = econfig_utils:mktemp(Basename),
-	    Data = econfig_srv:hash(),
-	    Bin = bbmustache:compile(bbmustache:parse_file(TmplName), Data),
-	    file:write_file(Tmpfile, Bin),
-	    case file:consult(Tmpfile) of
-		{ok, Config2} ->
-		    file:delete(Tmpfile),
-		    lists:keymerge(1, Config2, Config);
-		{error, Err} ->
-		    throw(Err)
-	    end;
-	false ->
+-spec state(rebar_state:t()) -> econfig_state:t().
+state(Rebar) ->
+    rebar_state:get(Rebar, ?KEY).
+
+-spec state(econfig_state:t(), rebar_state:t()) -> rebar_state:t().
+state(Ecfg, Rebar) ->
+    rebar_state:set(Rebar, ?KEY, Ecfg).
+
+-spec fold_apps(Fun :: atom(), Acc :: any(), rebar_state:t()) -> any().
+fold_apps(Fun, Acc, State) ->
+    ProjectApps = rebar_state:project_apps(State),
+    Deps = rebar_state:all_deps(State),
+    fold_app(Fun, ProjectApps ++ Deps, Acc, State).
+
+
+-spec script(Basedir :: filename:file(), Config :: [term()], Target :: filename:file()) -> [term()].
+script(Basedir, Config, Target) ->
+    Ecfg = init_(Basedir),
+    Tmpl = Target ++ ".in",
+    Tmpfile = econfig_utils:mktemp(Target),
+    econfig_utils:gen(Ecfg, Target, Tmpl),
+    case file:consult(Tmpfile) of
+	{ok, Config2} ->
+	    file:delete(Tmpfile),
+	    lists:keymerge(1, Config2, Config);
+	{error, _} ->
 	    Config
     end.
+
+%%%
+%%% Priv
+%%%
+init_(Basedir) ->
+    application:set_env(econfig, caller, rebar),
+    application:set_env(econfig, log, 100),
+    application:ensure_all_started(econfig),
+    econfig_state:new(Basedir).
+
+fold_app(_, [], Acc, _State) ->
+    Acc;
+fold_app(Fun, [ App | Tail ], Acc, State) ->
+    AppState = rebar_app_info:state_or_new(State, App),
+    fold_app(Fun, Tail, Fun(AppState, App, Acc), State).
+
+

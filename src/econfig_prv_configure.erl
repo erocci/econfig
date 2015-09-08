@@ -34,21 +34,26 @@ init(State) ->
                           {hooks, ?HOOKS},
                           {opts, []},
                           {namespace, econfig}]),
-    State1 = rebar_state:add_provider(State, P),    
+    State1 = rebar_state:add_provider(State, P),
     {ok, State1}.
 
 -spec do(rebar_state:t()) -> {ok, rebar_state:t()} | {error, string()}.
 do(State) ->
     ?info("Configuring application...", []),
-    econfig:models(foreach_apps(fun (AppState, AppInfo) ->
-                                        app_config_model(AppState, AppInfo)
-                                end, State)),
-    case econfig:configure() of
-        {ok, C} ->
-            econfig_config:store(C),
-            {ok, State};
-        {error, _} = Err ->
-            Err
+    Ecfg = econfig_rebar:state(State),
+    Models = econfig_rebar:fold_apps(fun (AppState, AppInfo, Acc) ->
+                                             [ app_config_model(AppState, AppInfo) | Acc ]
+                                     end, [], State),
+    case econfig_state:models(Models, Ecfg) of
+        {error, _} = Err -> Err;
+        Ecfg2 ->
+            case econfig_state:load(Ecfg2) of
+                {error, enoent} -> 
+                    configure(Ecfg2, State);
+                {error, _} = Err -> Err;
+                Ecfg3 ->
+                    configure(Ecfg3, State)
+            end
     end.
 
 
@@ -59,13 +64,16 @@ format_error(Reason) ->
 %%
 %% Private
 %%
-foreach_apps(Fun, State) ->
-    ProjectApps = rebar_state:project_apps(State),
-    Deps = rebar_state:all_deps(State),
-    [ Fun(rebar_app_info:state_or_new(State, App), App) || App <- ProjectApps ++ Deps ].
-
-
 app_config_model(State, Info) ->
     AppName = rebar_app_info:name(Info),
     ?debug("Load configuration entries for ~s", [AppName]),
-    { AppName, rebar_state:get(State, econfig, [])}.
+    { AppName, proplists:get_value(model, rebar_state:get(State, econfig, []), []) }.
+
+configure(Ecfg, Rebar) ->
+    case econfig_state:configure(Ecfg) of
+        {error, _} = Err ->
+            Err;
+        Ecfg2 ->
+            ok = econfig_state:store(Ecfg2),
+            {ok, econfig_rebar:state(Ecfg2, Rebar)}
+    end.

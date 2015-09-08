@@ -11,13 +11,14 @@
 -include("econfig_log.hrl").
 
 -export([new/0,
-	 load/1,
+	 new/1,
+	 load/2,
 	 lookup/2,
 	 set/3,
-	 store/1,
-	 clean/0,
+	 store/2,
 	 render/3,
 	 render/4,
+	 hash/1,
 	 hash/2]).
 
 -record state, {
@@ -28,34 +29,35 @@
 
 -spec new() -> t().
 new() ->
-    Tid = ets:new(config, []),
+    #state{tid=ets:new(config, [])}.
+
+-spec new(Econfig :: filename:file()) -> t().
+new(Econfig) ->
+    S = new(),
     case application:get_env(econfig, overwrite, false) of
 	true ->
-	    #state{tid=Tid};
+	    S;
 	false ->
-	    case load(#state{tid=Tid}) of
+	    case load(Econfig, S) of
+		{error, enoent} -> S;
 		{error, Err} -> throw(Err);
-		#state{} = S -> S
+		#state{} = S1 -> S1
 	    end
     end.
 
--spec load(t()) -> t().
-load(S) ->
-    Filename = get_econfig_name(),
+-spec load(filename:file(), t()) -> t() | {error, term()}.
+load(Filename, S) ->
     case file:consult(Filename) of
 	{ok, Config} ->
 	    ?info("Load config from ~s", [Filename]),
 	    populate(Config, S);
-	{error, enoent} ->
-	    S;
-	{error, Err} ->
-	    ?warn("Can not read configuration: ~p", [Err]),
-	    S
+	{error, _} = Err ->
+	    ?debug("No config found in ~s", [Filename]),
+	    Err
     end.
 
--spec store(t()) -> ok | {error, econfig_err()}.
-store(#state{}=S) ->
-    Filename = get_econfig_name(),
+-spec store(filename:file(), t()) -> ok | {error, econfig_err()}.
+store(Filename, #state{}=S) ->
     ?debug("Writing config to ~s", [Filename]),
     case file:write_file(Filename, [ io_lib:format("~tp.~n", [Term]) || Term <- to_list(S) ]) of
 	ok ->
@@ -64,11 +66,6 @@ store(#state{}=S) ->
 	{error, _} = Err ->
 	    Err
     end.
-
--spec clean() -> ok.
-clean() ->
-    file:delete(get_econfig_name()),
-    ok.
 
 -spec render(LocalNS :: atom(), Filename :: file:name_all(), Config :: t()) -> ok | {error, econfig_err()}.
 render(LocalNS, Target, Config) ->
@@ -100,6 +97,9 @@ lookup(Key, #state{tid=Tid}) ->
 set(Key, Val, #state{tid=Tid}) ->
     ets:insert(Tid, {Key, Val}).
 
+-spec hash(Config :: t()) -> #{}.
+hash(Config) ->
+    hash(#{}, Config).
 
 -spec hash(Data :: #{}, Config :: t()) -> #{}.
 hash(Data, Config) ->
@@ -137,13 +137,9 @@ parse_key(Key) ->
 	[App | Rest] ->
 	    {list_to_atom(App), list_to_atom(string:join(Rest, "."))};
 	_ ->
-	    throw({badendtry, Key})
+	    throw({badentry, Key})
     end.
 
 
 render_key(App, Key) ->
     string:join([atom_to_list(App), atom_to_list(Key)], ".").
-
-
-get_econfig_name() ->
-    filename:join([application:get_env(econfig, basedir, ""), ?econfig_file]).

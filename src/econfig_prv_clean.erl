@@ -12,7 +12,7 @@
 -include("econfig_log.hrl").
 
 -define(PROVIDER, clean).
--define(DEPS, [lock]).
+-define(DEPS, []).
 
 -define(PRE_HOOKS, []).
 -define(POST_HOOKS, []).
@@ -40,7 +40,7 @@ init(State) ->
 -spec do(rebar_state:t()) -> {ok, rebar_state:t()} | {error, string()}.
 do(State) ->
     ?info("Clean configuration...", []),
-    econfig_config:clean(),
+    file:delete(filename:join([rebar_dir:base_dir(State), ".econfig"])),
     {ok, State}.
 
 
