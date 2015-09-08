@@ -1,2 +1,5 @@
 code:set_path({{&econfig.paths}}),
-econfig_rebar:script("{{econfig.basedir}}", CONFIG, "{{econfig.target}}").
+try econfig_rebar:script("{{econfig.basedir}}", CONFIG, "{{econfig.target}}")
+catch error:undef ->
+      CONFIG
+end.
