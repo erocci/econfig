@@ -7,18 +7,23 @@
   {modules, [
 	     econfig,
 	     econfig_cli,
-	     econfig_model,
 	     econfig_config,
-	     econfig_model,
 	     econfig_frontend,
 	     econfig_log,
+	     econfig_model,
+	     econfig_prv_clean,
+	     econfig_prv_configure,
+	     econfig_prv_template,
+	     econfig_rebar,
+	     econfig_state,
 	     econfig_ui_defconfig,
-	     econfig_ui_tty
+	     econfig_ui_tty,
+	     econfig_utils
 	    ]},
   {registered, []},
   {applications, [kernel
-		  ,stdlib
-		  ,getopt
+		 ,stdlib
+		 ,getopt
 		 ]},
   {env, [
 	 {frontend, tty}         % default frontend: tty
