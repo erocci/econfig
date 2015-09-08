@@ -44,11 +44,12 @@ script(Basedir, Config, Target) ->
     Ecfg = init_(Basedir),
     Tmpl = Target ++ ".in",
     Tmpfile = econfig_utils:mktemp(Target),
-    econfig_utils:gen(Ecfg, Target, Tmpl),
+    ok = econfig_utils:gen(Ecfg, Tmpfile, Tmpl),
     case file:consult(Tmpfile) of
 	{ok, Config2} ->
 	    file:delete(Tmpfile),
-	    lists:keymerge(1, Config2, Config);
+	    Config3 = lists:keymerge(1, Config2, Config),
+	    Config3;
 	{error, _} ->
 	    Config
     end.
