@@ -17,13 +17,24 @@
 
 -type econfig_entry_opt() :: {depends, [econfig_entry_dep()]}
 			   | {help, string()}
-			   | {priority, integer()}.
+			   | {priority, integer()}
+			   | {call, mfa()}.
 
--type econfig_entry_dep() :: {Key :: econfig_entry_key(), Value :: econfig_entry_def()}.
+-type econfig_entry_dep() :: {Key :: econfig_entry_depkey(), Value :: econfig_entry_def()}
+			   | {Key :: econfig_entry_depkey()}.
 
 -type econfig_entry_key() :: Name :: atom() | {App :: atom(), Name :: atom()}.
 
--type econfig_entry_def() :: boolean() | integer() | string() | atom() | {choice, tuple()} | '_'.
+-type econfig_entry_depkey() :: {Name :: atom()} | {App :: atom(), Name :: atom()}.
+
+-type econfig_entry_def() :: boolean()
+			   | integer()
+			   | string() 
+			   | atom()
+			   | {choice, list()}
+			   | {lt, integer()}
+			   | {gt, integer()}
+			   | '_'.
 
 -type econfig_config() :: [econfig_value_entry()].
 

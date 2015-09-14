@@ -12,33 +12,41 @@
 
 % API
 -export([new/0,
+	 get_entry/2,
 	 add_entries/3,
 	 solve_deps/1,
-	 entries/1]).
-
--export([graph/1]).
+	 entries/1,
+	 deps/2]).
 
 % pretty printer
 -export([pp/1]).
 
 -record model, {
-	  ev           :: ets:tid(),        % {entry key, vertex} table
-	  deps         :: ets:tid(),        % {dep key, value} table
-	  graph        :: digraph:graph(),
-	  root         :: digraph:vertex()
+	  graph :: digraph:graph(),
+	  deps  :: ets:tid()
 	 }.
+
 -type t() :: #model{}.
+
 -export_type([t/0]).
 
--define(root, {{econfig, root}, "", boolean, false, []}).
+-define(root_key, {econfig, root}).
+-define(root, {?root_key, "", boolean, false, []}).
 
 -spec new() -> t().
 new() ->
-    EV_Tid = ets:new(ev, []),
-    Deps_Tid = ets:new(deps, []),
     G = digraph:new([acyclic]),
-    Root = digraph:add_vertex(G, ?root),                  % root node connects to every entry
-    #model{ev=EV_Tid, deps=Deps_Tid, graph=G, root=Root}.
+    digraph:add_vertex(G, ?root_key, econfig_entry:new(?root)),          % root node connects to every entry
+    Tid = ets:new(?MODULE, []),
+    #model{graph=G, deps=Tid}.
+
+
+-spec get_entry(econfig_entry_key(), t()) -> econfig_entry:t() | undefined.
+get_entry(Key, #model{graph=G}) ->
+    case digraph:vertex(G, Key) of
+	{Key, Entry} -> Entry;
+	_ -> undefined
+    end.
 
 
 -spec add_entries(AppName :: binary() | string() | atom(), AppModel :: [econfig_entry()], t()) -> t().
@@ -47,67 +55,66 @@ add_entries(AppName, AppModel, Model) when is_binary(AppName) ->
 add_entries(AppName, AppModel, Model) when is_list(AppName) ->
     add_entries(list_to_atom(AppName), AppModel, Model);
 add_entries(AppName, AppModel, Model) ->
-    lists:foldl(fun ({Key, Desc, Type, Dft, Opts}, Acc) -> 
-			add_entry({AppName, Key}, Desc, Type, Dft, Opts, Acc)
+    lists:foldl(fun (EntryDesc, Acc) ->
+			Entry = econfig_entry:new(AppName, EntryDesc),
+			add_entry(Entry, Acc)
 		end, Model, AppModel).
 
 
 -spec solve_deps(t()) -> t().
-solve_deps(#model{graph=G} = Model) ->
-    lists:foldl(fun ({Key, _, _, _, Opts}, Acc) ->
-			Deps = proplists:get_value(depends, Opts, []),
-			add_deps(Key, Deps, Acc)
+solve_deps(#model{graph=G}=Model) ->
+    lists:foldl(fun (Key, Acc) ->
+			{_, Entry} = digraph:vertex(Acc#model.graph, Key),
+			lists:foldl(fun (Dep, Acc2) ->
+					    add_dep(Key, Dep, Acc2)
+				    end, Acc, econfig_entry:deps(Entry))
 		end, Model, digraph:vertices(G)).
 
+
 -spec pp(t()) -> ok.
-pp(#model{root=Root, graph=G}) ->
-    V = digraph_utils:reaching([Root], G),
-    lists:foldl(fun ({Key, _, _, _, _}, Acc) ->
+pp(#model{}=Model) ->
+    lists:foldl(fun (Key, Acc) ->
 			io:format("~b: ~p~n", [Acc, Key]),
 			Acc+1
-		end, 1, lists:reverse(V)).
+		end, 1, lists:reverse(digraph_utils:reaching([?root_key], Model#model.graph))).
 
 
--spec graph(t()) -> digraph:graph().
-graph(#model{graph=G}) ->
-    G.
+-spec entries(t()) -> [econfig_entry:t()].
+entries(#model{}=Model) ->
+    lists:foldl(fun (?root_key, Acc) ->
+			Acc;
+		    (Key, Acc) ->
+			{_, Entry} = digraph:vertex(Model#model.graph, Key),
+			[ Entry | Acc]
+		end, [], digraph_utils:reaching([?root_key], Model#model.graph)).
 
--spec entries(t()) -> [econfig_entry()].
-entries(#model{root=Root, graph=G}) ->
-    [ _Root | Entries] = lists:reverse(digraph_utils:reaching([Root], G)),
-    Entries.
+
+-spec deps(econfig_entry(), t()) -> [econfig_entry:dep()].
+deps(Entry, #model{graph=G, deps=Tid}) ->
+    Key = econfig_entry:key(Entry),
+    lists:foldl(fun (DepKey, Acc) when DepKey =:= Key -> 
+			Acc;
+		    (DepKey, Acc) ->
+			[ {_Key, Dep} ] = ets:lookup(Tid, {DepKey, Key}),
+			[ Dep | Acc ]
+		end, [], digraph_utils:reaching([Key], G)).
 
 %%%
 %%% Priv
 %%%
-add_entry({App, Key}, Desc, Type, Dft, Opts, #model{ev=Tid, graph=G, root=Root}=Model) ->
-    V = digraph:add_vertex(G, {{App, Key}, Desc, Type, Dft, Opts}, {App, Key}),
-    digraph:add_edge(G, V, Root),
-    ets:insert(Tid, {{App, Key}, V}),
+add_entry(Entry, #model{graph=G}=Model) ->
+    V = digraph:add_vertex(G, econfig_entry:key(Entry), Entry),
+    digraph:add_edge(G, V, ?root_key, undefined),
     Model.
 
-add_deps({App, Key}, Deps, Model) ->
-    lists:foldl(fun ({{DepApp, DepKey}, Val}, Acc) when is_atom(DepApp), is_atom(DepKey) ->
-			add_dep({App, Key}, {DepApp, DepKey}, Val, Acc);
-		    ({DepKey, Val}, Acc) when is_atom(Key) ->
-			add_dep({App, Key}, {App, DepKey}, Val, Acc)
-		end, Model, Deps).
-
-add_dep(Entry, Dep, Val, #model{ev=EV, deps=Tid, graph=G}=Model) ->
-    case {ets:lookup(EV, Entry), ets:lookup(EV, Dep)} of
-	{[{_, V1}], [{_, V2}]} ->
-	    case digraph:add_edge(G, V2, V1) of
-		{error, {bad_edge, Path}} ->
-		    throw({cycle, Path});
-		{error, {bad_vertex, V}} ->
-		    throw({badentry, V});
-		_Edge ->
-		    Model
-	    end;
-	{[], _} ->
-	    throw({badentry, Entry});
-	{_, []} ->
-	    throw({badentry, Dep})
-    end,
-    ets:insert(Tid, {{Entry, Dep}, Val}),
-    Model.
+add_dep(Key, Dep, #model{graph=G, deps=Tid}=Model) ->
+    DepKey = econfig_dep:key(Dep),
+    case digraph:add_edge(G, DepKey, Key) of
+	{error, {bad_edge, Path}} ->
+	    throw({cycle, Path});
+	{error, {bad_vertex, V}} ->
+	    throw({badentry, V});
+	_Edge ->
+	    ets:insert(Tid, {{DepKey, Key}, Dep}),
+	    Model
+    end.

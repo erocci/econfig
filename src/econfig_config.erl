@@ -56,6 +56,7 @@ load(Filename, S) ->
 	    Err
     end.
 
+
 -spec store(filename:file(), t()) -> ok | {error, econfig_err()}.
 store(Filename, #state{}=S) ->
     ?debug("Writing config to ~s", [Filename]),
@@ -93,9 +94,10 @@ lookup(Key, #state{tid=Tid}) ->
     end.
 
 
--spec set(Key :: econfig_entry_key(), Val :: econfig_value(), t()) -> ok.
-set(Key, Val, #state{tid=Tid}) ->
-    ets:insert(Tid, {Key, Val}).
+-spec set(Key :: econfig_entry_key(), Val :: econfig_value(), t()) -> t().
+set(Key, Val, #state{tid=Tid}=S) ->
+    ets:insert(Tid, {Key, Val}),
+    S.
 
 -spec hash(Config :: t()) -> #{}.
 hash(Config) ->

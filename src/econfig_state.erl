@@ -80,8 +80,8 @@ parse_models(Dirs, S) ->
 configure(#state{config=C, model=Model}=S) ->
     F = econfig_frontend:new(Model),
     case econfig_frontend:run(C, F) of
-	{ok, C1} ->
-	    S#state{config=C1, frontend=F};
+	{ok, C1, F1} ->
+	    S#state{config=C1, frontend=F1};
 	{error, _} = Err ->
 	    Err
     end.

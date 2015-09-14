@@ -8,9 +8,15 @@
 -module(econfig_frontend).
 
 -include("econfig.hrl").
+-include("econfig_log.hrl").
 
+% External API
 -export([new/1,
 	 run/2]).
+
+% Frontend implementations API
+-export([is_enable/3,
+	 eval/4]).
 
 -type ui() :: term().
 
@@ -23,7 +29,8 @@
 -export_type([t/0, ui/0]).
 
 -callback start_link(Model :: econfig_model:t(), Opts :: term()) -> {ok, ui()} | {error, econfig_err()}.
--callback ask(Entry :: econfig_entry(), Config :: econfig_config:t(), ui()) -> {ok, econfig_value(), ui()}.
+-callback run(Model :: econfig_model:t(), Config :: econfig_config:t(), ui()) -> {ok, econfig_config:t(), ui()} 
+										     | {error, term()}.
 -callback terminate(Ref :: ui()) -> ok.
 
 -spec new(Model :: econfig_model:t()) -> {ok, t()} | {error, econfig_err()}.
@@ -36,25 +43,43 @@ new(Model) ->
 	    Err
     end.
 
--spec run(Config :: econfig_config:t(), Frontend :: t()) -> {ok, econfig_config:t()} | {error, econfig_err()}.
-run(Config, #state{model=Model}=F) ->
-    {C1, _} = lists:foldl(fun (Entry, {C0, F0}) ->
-				  eval(Entry, C0, F0)
-			  end, {Config, F}, econfig_model:entries(Model)),
-    {ok, C1}.
+-spec run(Config :: econfig_config:t(), Frontend :: t()) -> {ok, econfig_config:t(), t()} | {error, econfig_err()}.
+run(Config, #state{model=Model, mod=Mod, ref=Ref}=F) ->
+    case Mod:run(Model, Config, Ref) of
+	{ok, C1, Ref1} ->
+	    {ok, C1, F#state{ref=Ref1}};
+	{error, _} = Err ->
+	    Err
+    end.
+
+-spec is_enable(econfig_entry:t(), econfig_config:t(), econfig_model:t()) -> boolean.
+is_enable(Entry, Config, Model) ->
+    is_enable_(econfig_model:deps(Entry, Model), Config).
+
+
+-spec eval(Entry :: econfig_entry:t(), Fun :: fun(), Config :: econfig_config:t(), Model :: econfig_model:t()) -> econfig_config:t().
+eval(Entry, Fun, Config, Model) ->
+    Val = case is_enable(Entry, Config, Model) of
+	      true ->
+		  econfig_entry:eval(Fun, Entry);
+	      false ->
+		  disable(econfig_entry:type(Entry))
+	  end,
+    econfig_config:set(econfig_entry:key(Entry), Val, Config).
 
 %%%
 %%% Priv
 %%%
-eval({Key, _, _, _, _} = Entry, Config, #state{mod=Mod, ref=Ref}=F) ->
-    case econfig_config:lookup(Key, Config) of
-	{ok, _V} ->
-	    % If already set, pass
-	    {Config, F};
-	undefined ->
-	    {ok, Val, Ref} = Mod:ask(Entry, Config, Ref),
-	    econfig_config:set(Key, Val, Config),
-	    {Config, F#state{ref=Ref}}
+is_enable_([], _) -> 
+    true;
+is_enable_([ Dep | Tail ], Config) ->
+    case econfig_config:lookup(econfig_dep:key(Dep), Config) of
+	{ok, Val} -> 
+	    case econfig_dep:match(Dep, Val) of
+		true -> is_enable_(Tail, Config);
+		false -> false
+	    end;
+	undefined -> false
     end.
 
 impl() ->
@@ -78,3 +103,7 @@ is_module(Mod) when is_atom(Mod) ->
     end;
 is_module(_) -> 
     false.
+
+
+disable(boolean) -> false;
+disable(_) -> undefined.

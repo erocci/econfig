@@ -7,14 +7,20 @@
 
 -module(econfig_utils).
 
+-include("econfig_log.hrl").
+
 -export([mktemp/1,
 	 system_tmpdir/0,
 	 gen/3,
+	 cmd/1,
+	 cmd/2,
 	 pp_timestamp/0]).
+
 
 mktemp(Template) ->
     TmpDir = system_tmpdir(),
     mktemp_(TmpDir, Template).
+
 
 system_tmpdir() ->
     case erlang:system_info(system_architecture) of
@@ -24,10 +30,12 @@ system_tmpdir() ->
 	    "/tmp"
     end.
 
+
 -spec pp_timestamp() -> string().
 pp_timestamp() ->
     {{Y,M,D},{H,Min,S}} = calendar:now_to_universal_time(erlang:timestamp()),
     io_lib:format("~b-~2..0b-~2..0b ~2..0b:~2..0b:~2..0b", [Y,M,D,H,Min,S]).
+
 
 -spec gen(Ecfg :: econfig_state:t(), Target :: filename:file(), Tmpl :: filename:file()) -> ok | {error, term()}.
 gen(Ecfg, Target, Tmpl) ->
@@ -40,6 +48,17 @@ gen(Ecfg, Target, Tmpl) ->
 	false ->
 	    {error, {notfound, Tmpl}}
     end.
+
+
+-spec cmd(Cmd :: string()) -> {ok, string()} | {error, term()}.
+cmd(Cmd) ->
+    cmd(Cmd, 5000).
+
+
+-spec cmd(Cmd :: string(), Timeout :: integer()) -> {ok, string()} | {error, term()}.
+cmd(Cmd, Timeout) ->
+    Port = erlang:open_port({spawn, Cmd}, [exit_status]),
+    loop_cmd(Port, [], Timeout).
 
 %%
 %% Priv
@@ -60,3 +79,15 @@ write(Filename, Data) ->
 	      "%%%\n",
 	      Data ],
     file:write_file(Filename, Data2).
+
+loop_cmd(Port, Data, Timeout) ->
+    receive
+	{Port, {data, NewData}} ->
+	    loop_cmd(Port, Data ++ NewData, Timeout);
+	{Port, {exit_status, 0}} ->
+	    {ok, Data};
+	{Port, {exit_status, N}} ->
+	    {error, {status, N}}
+    after Timeout ->
+	    {error, timeout}
+    end.

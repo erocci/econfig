@@ -11,7 +11,7 @@
 
 % econfig_frontend behaviour
 -export([start_link/2,
-	 ask/3,
+	 run/3,
 	 terminate/1]).
 
 -record state, {}.
@@ -19,8 +19,11 @@
 start_link(_, _) ->
     {ok, #state{}}.
 
-ask({_, _, _Type, Default, _}=_E, _Config, Ref) ->
-    {ok, Default, Ref}.
+run(Model, Config, Ref) ->
+    C1 = lists:foldl(fun ({Key, _, _, Default, _}, C0) ->
+			     econfig_config:set(Key, Default, C0)
+		     end, Config, econfig_model:entries(Model)),
+    {ok, C1, Ref}.
 
 terminate(_Ref) ->
     ok.

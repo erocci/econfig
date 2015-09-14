@@ -7,11 +7,14 @@
 
 -module(econfig_ui_tty).
 
+-include("econfig.hrl").
+-include("econfig_log.hrl").
+
 -behaviour(econfig_frontend).
 
 % econfig_frontend behaviour
 -export([start_link/2,
-	 ask/3,
+	 run/3,
 	 terminate/1]).
 
 -record state, {model :: econfig_model:t()}.
@@ -19,21 +22,19 @@
 start_link(Model, _) ->
     {ok, #state{model=Model}}.
 
-ask({_, _, Type, Default, _}=E, _Config, Ref) ->
-    case io:get_line(prompt(E)) of
-	{error, Err} -> throw(Err);
-	eof -> throw({invalid_input, eof});
-	Data -> 
-	    case cast(strip(Data), Type, Default) of
-		{error, {invalid_input, V}} ->
-		    io:format("E: Invalid value: ~p~n", [V]),
-		    ask(E, _Config, Ref);
-		{error, {invalid_type, T}} ->
-		    throw({invalid_type, T});
-		V -> 
-		    {ok, V, Ref}
-	    end
-    end.
+run(Model, Config, Ref) ->
+    Entries = lists:filter(fun (Entry) ->
+				   case econfig_config:lookup(econfig_entry:key(Entry), Config) of
+				       {ok, _} -> false;
+				       undefined -> true
+				   end
+			   end, econfig_model:entries(Model)),
+    C1 = lists:foldl(fun (Entry, C0) ->
+			     econfig_frontend:eval(Entry, 
+						   fun (E) -> ask(E, C0) end,
+						   C0, Model)
+		     end, Config, Entries),
+    {ok, C1, Ref}.
 
 terminate(_Ref) ->
     ok.
@@ -41,7 +42,29 @@ terminate(_Ref) ->
 %%%
 %%% Priv
 %%%
-prompt({{App, Key}, Desc, Type, Default, _}) ->
+ask(Entry, Config) ->
+    case io:get_line(prompt(Entry)) of
+	{error, Err} -> throw(Err);
+	eof -> throw({invalid_input, eof});
+	Data -> 
+	    Type = econfig_entry:type(Entry),
+	    Default = econfig_entry:default(Entry),
+	    case cast(strip(Data), Type, Default) of
+		{error, {invalid_input, V}} ->
+		    io:format("E: Invalid value: ~p~n", [V]),
+		    ask(Entry, Config);
+		{error, {invalid_type, T}} ->
+		    throw({invalid_type, T});
+		V -> 
+		    V
+	    end
+    end.
+
+prompt(E) ->
+    {App, Key} = econfig_entry:key(E),
+    Desc = econfig_entry:desc(E),
+    Type = econfig_entry:type(E),
+    Default = econfig_entry:default(E),
     io_lib:format("(~p.~p) ~s [~s] : ", [App, Key, Desc, prompt_default(Type, Default)]).
 
 prompt_default(boolean, true) -> "Y/n";
