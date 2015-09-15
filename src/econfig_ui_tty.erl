@@ -30,9 +30,9 @@ run(Model, Config, Ref) ->
 				   end
 			   end, econfig_model:entries(Model)),
     C1 = lists:foldl(fun (Entry, C0) ->
-			     econfig_frontend:eval(Entry, 
-						   fun (E) -> ask(E, C0) end,
-						   C0, Model)
+			     econfig_model:eval(Entry, 
+						fun (E) -> ask(E, C0) end,
+						C0, Model)
 		     end, Config, Entries),
     {ok, C1, Ref}.
 

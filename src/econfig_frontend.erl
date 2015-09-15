@@ -14,10 +14,6 @@
 -export([new/1,
 	 run/2]).
 
-% Frontend implementations API
--export([is_enable/3,
-	 eval/4]).
-
 -type ui() :: term().
 
 -record state, {
@@ -52,36 +48,9 @@ run(Config, #state{model=Model, mod=Mod, ref=Ref}=F) ->
 	    Err
     end.
 
--spec is_enable(econfig_entry:t(), econfig_config:t(), econfig_model:t()) -> boolean.
-is_enable(Entry, Config, Model) ->
-    is_enable_(econfig_model:deps(Entry, Model), Config).
-
-
--spec eval(Entry :: econfig_entry:t(), Fun :: fun(), Config :: econfig_config:t(), Model :: econfig_model:t()) -> econfig_config:t().
-eval(Entry, Fun, Config, Model) ->
-    Val = case is_enable(Entry, Config, Model) of
-	      true ->
-		  econfig_entry:eval(Fun, Entry);
-	      false ->
-		  disable(econfig_entry:type(Entry))
-	  end,
-    econfig_config:set(econfig_entry:key(Entry), Val, Config).
-
 %%%
 %%% Priv
 %%%
-is_enable_([], _) -> 
-    true;
-is_enable_([ Dep | Tail ], Config) ->
-    case econfig_config:lookup(econfig_dep:key(Dep), Config) of
-	{ok, Val} -> 
-	    case econfig_dep:match(Dep, Val) of
-		true -> is_enable_(Tail, Config);
-		false -> false
-	    end;
-	undefined -> false
-    end.
-
 impl() ->
     case application:get_env(econfig, frontend, tty) of
 	I when is_atom(I) ->
@@ -103,7 +72,3 @@ is_module(Mod) when is_atom(Mod) ->
     end;
 is_module(_) -> 
     false.
-
-
-disable(boolean) -> false;
-disable(_) -> undefined.

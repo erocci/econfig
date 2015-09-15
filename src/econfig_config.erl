@@ -99,9 +99,11 @@ set(Key, Val, #state{tid=Tid}=S) ->
     ets:insert(Tid, {Key, Val}),
     S.
 
+
 -spec hash(Config :: t()) -> #{}.
 hash(Config) ->
     hash(#{}, Config).
+
 
 -spec hash(Data :: #{}, Config :: t()) -> #{}.
 hash(Data, Config) ->

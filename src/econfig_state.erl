@@ -97,9 +97,9 @@ store(#state{config=C, basedir=B}) ->
 compile(Entries) ->
     M0 = econfig_model:new(),
     Model = lists:foldl(fun ({AppName, AppEntries}, Acc) ->
-				econfig_model:add_entries(AppName, AppEntries, Acc)
+				econfig_model:entries(AppName, AppEntries, Acc)
 			end, M0, Entries),
-    econfig_model:solve_deps(Model).
+    econfig_model:compile(Model).
 
 load_models(Filenames) ->
     AppEntries = lists:foldl(fun (Filename, Acc) ->

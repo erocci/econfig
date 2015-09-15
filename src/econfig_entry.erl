@@ -9,42 +9,47 @@
 
 -include("econfig.hrl").
 
--record(entry, {key      :: {atom(), atom()},
-		desc     :: string(),
-		type     :: econfig_entry_type(),
-		default  :: term(),
-		deps     :: [dep()],
-		opts     :: [econfig_entry_opt()]}).
+-type key() :: {atom(), atom()}.
+-record(entry, {key                 :: key(),
+		desc                :: string(),
+		type                :: econfig_entry_type(),
+		default             :: term(),
+		select   = []       :: [econfig_dep:t()],
+		depends  = []       :: [econfig_dep:t()],
+		menu     = []       :: [econfig_dep:t()],
+		choice   = []       :: [econfig_dep:t()],
+		requires = []       :: [econfig_dep:t()],
+		excludes = []       :: [econfig_dep:t()],
+		opts                :: [econfig_entry_opt()]}).
 -type t() :: #entry{}.
 
--record(dep, {key    :: {atom, atom()},
-	      val    :: econfig_entry_def(),
-	      edge   :: digraph:edge()}).
--type dep() :: #dep{}.
+-export_type([t/0]).
 
--export_type([t/0, dep/0]).
-
--export([new/1,
+-export([new/5,
 	 new/2,
 	 key/1,
 	 desc/1,
 	 type/1,
 	 default/1,
-	 deps/1,
+	 menu/1,
 	 deps/2,
 	 eval/2]).
 
--spec new(Desc :: econfig_entry()) -> t().
-new({{App, Key}, Desc, Type, Default, Opts}) ->
-    #entry{key={App, Key}, desc=Desc, type=Type, default=Default, deps=[], opts=Opts}.
+-spec new(Key :: key(), Desc :: string(), Type :: econfig_entry_type(), 
+	  Dft :: term(), Opts :: [econfig_entry_opt()]) -> t().
+new(Key, Desc, Type, Dft, Opts) ->
+    #entry{key=Key, desc=Desc, type=Type, default=Dft, opts=Opts}.
 
 
 -spec new(AppName :: atom(), Desc :: econfig_entry()) -> t().
 new(App, {Key, Desc, Type, Default, Opts}) ->
-    Deps = lists:foldl(fun (DepDesc, Acc) ->
-			       [ econfig_dep:new(DepDesc, App) | Acc ]
-		       end, [], proplists:get_value(depends, Opts, [])),
-    #entry{key={App, Key}, desc=Desc, type=Type, default=Default, deps=Deps, opts=Opts}.
+    #entry{key=econfig_utils:parse_key(App, Key), desc=Desc, type=Type, default=Default, opts=Opts,
+	   select=relation(App, select, Opts),
+	   depends=relation(App, depends, Opts),
+	   menu=relation(App, menu, Opts),
+	   choice=relation(App, choice, Opts),
+	   requires=relation(App, requires, Opts),
+	   excludes=relation(App, excludes, Opts)}.
 
 
 -spec key(Entry :: t()) -> {atom(), atom()}.
@@ -67,14 +72,18 @@ type(#entry{type=T}) ->
     T.
 
 
--spec deps(Entry :: t()) -> [dep()].
-deps(#entry{deps=Deps}) ->
-    Deps.
+-spec menu(t()) -> boolean().
+menu(#entry{menu=Menu}) ->
+    Menu.
 
 
--spec deps(Deps :: [dep()], Entry :: t()) -> t().
-deps(Deps, #entry{}=Entry) when is_list(Deps) ->
-    Entry#entry{deps=Deps}.
+-spec deps(Type :: econfig_dep:dep_type(), Entry :: t()) -> [econfig_dep:t()].
+deps(select,   #entry{select=D})   -> D;
+deps(depends,  #entry{depends=D})  -> D;
+deps(menu,     #entry{menu=D})     -> D;
+deps(choice,   #entry{choice=D})   -> D;
+deps(requires, #entry{requires=D}) -> D;
+deps(excludes,  #entry{excludes=D}) -> D.
 
 
 -spec eval(fun(), t()) -> econfig_value() | undefined.
@@ -89,3 +98,8 @@ eval(Fun, #entry{opts=Opts}=Entry) ->
 %%%
 %%% Priv
 %%%
+relation(App, Type, Opts) ->
+    lists:foldl(fun (DepDesc, Acc) ->
+			[ econfig_dep:new(App, DepDesc, Type) | Acc ]
+		end, [], proplists:get_value(Type, Opts, [])).
+    

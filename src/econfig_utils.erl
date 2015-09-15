@@ -14,7 +14,8 @@
 	 gen/3,
 	 cmd/1,
 	 cmd/2,
-	 pp_timestamp/0]).
+	 pp_timestamp/0,
+	 parse_key/2]).
 
 
 mktemp(Template) ->
@@ -62,6 +63,21 @@ cmd(Cmd) ->
 cmd(Cmd, Timeout) ->
     Port = erlang:open_port({spawn, Cmd}, [exit_status]),
     loop_cmd(Port, [], Timeout).
+
+
+parse_key(App, Key) when is_atom(Key) ->
+    parse_key(App, atom_to_list(Key));
+parse_key(undefined, Key) when is_atom(Key) ->
+    case string:tokens(Key, ".") of
+	[App, Key] ->
+	    {list_to_atom(App), list_to_atom(Key)};
+	_ ->
+	    throw({invalid_key, Key})
+    end;
+parse_key(App, Key) when is_atom(App) ->
+    {App, list_to_atom(Key)};
+parse_key(_App, _Key) ->
+    throw({invalid_key, {_App, _Key}}).
 
 %%
 %% Priv
