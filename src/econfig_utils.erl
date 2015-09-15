@@ -41,10 +41,13 @@ pp_timestamp() ->
 gen(Ecfg, Target, Tmpl) ->
     case filelib:is_regular(Tmpl) of
 	true ->
-	    Ecfg2 = econfig_state:load(Ecfg),
-	    Config = econfig_state:config(Ecfg2),
-	    Bin = bbmustache:compile(bbmustache:parse_file(Tmpl), econfig_config:hash(Config)),
-            write(Target, Bin);
+	    case econfig_state:load(Ecfg) of
+		{error, _} -> ok;
+		Ecfg2 ->
+		    Config = econfig_state:config(Ecfg2),
+		    Bin = bbmustache:compile(bbmustache:parse_file(Tmpl), econfig_config:hash(Config)),
+		    write(Target, Bin)
+	    end;
 	false ->
 	    {error, {notfound, Tmpl}}
     end.
