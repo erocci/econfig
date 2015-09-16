@@ -8,6 +8,7 @@
 -module(econfig_dep).
 
 -include("econfig.hrl").
+-include("econfig_log.hrl").
 
 -type dep_key() :: {atom(), atom()}.
 -type dep_type() :: select | depends | menu | choice | requires | excludes.
@@ -27,7 +28,8 @@
 
 -spec new(AppName :: atom(), Desc :: econfig_entry_dep(), Type :: dep_type()) -> t().
 new(App, {DepKey, Val}, Type) when is_atom(DepKey), is_atom(App) ->
-    #dep{key=econfig_utils:parse_key(App, DepKey), val=Val, type=Type};
+    FullKey = econfig_utils:parse_key(App, DepKey),
+    #dep{key=FullKey, val=Val, type=Type};
 new(App, DepKey, Type) ->
     new(App, {DepKey, '_'}, Type).
 

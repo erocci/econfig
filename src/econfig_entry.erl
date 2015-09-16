@@ -8,6 +8,7 @@
 -module(econfig_entry).
 
 -include("econfig.hrl").
+-include("econfig_log.hrl").
 
 -type key() :: {atom(), atom()}.
 -record(entry, {key                 :: key(),
@@ -43,7 +44,8 @@ new(Key, Desc, Type, Dft, Opts) ->
 
 -spec new(AppName :: atom(), Desc :: econfig_entry()) -> t().
 new(App, {Key, Desc, Type, Default, Opts}) ->
-    #entry{key=econfig_utils:parse_key(App, Key), desc=Desc, type=Type, default=Default, opts=Opts,
+    FullKey = econfig_utils:parse_key(App, Key),
+    #entry{key=FullKey, desc=Desc, type=Type, default=Default, opts=Opts,
 	   select=relation(App, select, Opts),
 	   depends=relation(App, depends, Opts),
 	   menu=relation(App, menu, Opts),

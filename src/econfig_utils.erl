@@ -65,19 +65,20 @@ cmd(Cmd, Timeout) ->
     loop_cmd(Port, [], Timeout).
 
 
-parse_key(App, Key) when is_atom(Key) ->
-    parse_key(App, atom_to_list(Key));
-parse_key(undefined, Key) when is_atom(Key) ->
+parse_key(CurrentNS, Key) when is_atom(Key) ->
+    parse_key(CurrentNS, atom_to_list(Key));
+parse_key(CurrentNS, Key) ->
     case string:tokens(Key, ".") of
-	[App, Key] ->
-	    {list_to_atom(App), list_to_atom(Key)};
-	_ ->
-	    throw({invalid_key, Key})
-    end;
-parse_key(App, Key) when is_atom(App) ->
-    {App, list_to_atom(Key)};
-parse_key(_App, _Key) ->
-    throw({invalid_key, {_App, _Key}}).
+	[NS, LocalKey] ->
+	    {list_to_atom(NS), list_to_atom(LocalKey)};
+	_T ->
+	    case CurrentNS of
+		undefined ->
+		    throw({invalid_key, Key});
+		_ ->
+		    {CurrentNS, list_to_atom(Key)}
+	    end
+    end.
 
 %%
 %% Priv
