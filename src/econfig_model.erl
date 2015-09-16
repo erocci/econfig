@@ -17,7 +17,7 @@
 	 entries/1,
 	 compile/1,
 	 eval/4,
-	 is_enable/3]).
+	 needs_eval/3]).
 
 % pretty printer
 -export([pp/1]).
@@ -92,21 +92,40 @@ pp(#model{}=Model) ->
 -spec eval(Entry :: econfig_entry:t(), 
 	   Fun :: fun(), 
 	   Config :: econfig_config:t(), 
-	   Model :: econfig_model:t()) -> econfig_config:t().
+	   Model :: econfig_model:t()) -> econfig_config:t() | {error, term()}.
 eval(Entry, Fun, Config, Model) ->
-    Val = case is_enable(Entry, Config, Model) of
-	      true ->
-		  econfig_entry:eval(Fun, Entry);
-	      false ->
-		  disable(econfig_entry:type(Entry))
-	  end,
-    set(Entry, Val, Config, Model).
+    case is_menu_set(Entry, Config, Model) of
+	ok ->
+	    Val = case needs_eval(Entry, Config, Model) of
+		      true ->
+			  econfig_entry:eval(Fun, Entry);
+		      false ->
+			  disable_value(econfig_entry:type(Entry))
+		  end,
+	    set(Entry, Val, Config, Model);
+	{error, _} = Err ->
+	    Err
+    end.
 
--spec is_enable(Entry :: econfig_entry:t(), Config :: entry_config:t(), t()) -> boolean().
-is_enable(Entry, Config, Model) ->
-    % TODO: check other relations
+%% true: the entry needs to be evaluated
+-spec needs_eval(Entry :: econfig_entry:t(), Config :: entry_config:t(), t()) -> boolean().
+needs_eval(Entry, Config, Model) ->
     Deps = [ Dep || Dep <- deps(Entry, Model), econfig_dep:type(Dep) =:= depends ],
-    is_enable_(Deps, Config).
+    needs_eval_(Deps, Config).
+
+%% ok: entry is a menu and at least one dep is set or entry is not a menu
+-spec is_menu_set(econfig_entry:t(), econfig_config:t(), econfig_model:t()) -> ok | {error, term()}.
+is_menu_set(Entry, Config, Model) ->
+    case
+	[ Dep || Dep <- deps(Entry, Model), econfig_dep:type(Dep) =:= menu ]
+    of 
+	[] -> ok;
+	Deps ->
+	    case is_menu_set_(Deps, Config) of
+		true -> ok;
+		false -> {error, {menu, Entry, Deps}}
+	    end
+    end.
 
 %%%
 %%% Priv
@@ -134,17 +153,6 @@ entry(Key, #model{graph=G}) ->
     {_, Entry} = digraph:vertex(G, Key),
     Entry.
 
-
-select_value(Entry, '_') ->
-    case econfig_entry:type(Entry) of
-	boolean -> 
-	    true;
-	_ ->
-	    econfig_entry:default(Entry)
-    end;
-select_value(_, Val) ->
-    Val.
-    
 
 deps(Entry, #model{graph=G}) ->
     Key = econfig_entry:key(Entry),
@@ -182,19 +190,44 @@ add_dep(Entry, Dep, #model{graph=G}=Model) ->
     end.	
 
 
-is_enable_([], _) -> 
-    true;
-is_enable_([ Dep | Tail ], Config) ->
+is_menu_set_([], _) ->
+    false;
+is_menu_set_([ Dep | Tail ], Config) ->
     Key = econfig_dep:key(Dep),
     case econfig_config:lookup(Key, Config) of
 	{ok, Val} -> 
 	    case econfig_dep:match(Dep, Val) of
-		true -> is_enable_(Tail, Config);
+		true -> true;
+		false -> is_menu_set_(Tail, Config)
+	    end;
+	undefined -> is_menu_set_(Tail, Config)
+    end.
+
+
+needs_eval_([], _) -> 
+    true;
+needs_eval_([ Dep | Tail ], Config) ->
+    Key = econfig_dep:key(Dep),
+    case econfig_config:lookup(Key, Config) of
+	{ok, Val} -> 
+	    case econfig_dep:match(Dep, Val) of
+		true -> needs_eval_(Tail, Config);
 		false -> false
 	    end;
 	undefined -> false
     end.
 
 
-disable(boolean) -> false;
-disable(_) -> undefined.
+select_value(Entry, '_') ->
+    case econfig_entry:type(Entry) of
+	boolean -> 
+	    true;
+	_ ->
+	    econfig_entry:default(Entry)
+    end;
+select_value(_, Val) ->
+    Val.
+    
+
+disable_value(boolean) -> false;
+disable_value(_) -> undefined.

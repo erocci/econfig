@@ -28,6 +28,7 @@
 -callback run(Model :: econfig_model:t(), Config :: econfig_config:t(), ui()) -> {ok, econfig_config:t(), ui()} 
 										     | {error, term()}.
 -callback terminate(Ref :: ui()) -> ok.
+-callback format_error(Err :: term()) -> ok.
 
 -spec new(Model :: econfig_model:t()) -> {ok, t()} | {error, econfig_err()}.
 new(Model) ->
@@ -41,10 +42,15 @@ new(Model) ->
 
 -spec run(Config :: econfig_config:t(), Frontend :: t()) -> {ok, econfig_config:t(), t()} | {error, econfig_err()}.
 run(Config, #state{model=Model, mod=Mod, ref=Ref}=F) ->
-    case Mod:run(Model, Config, Ref) of
+    try Mod:run(Model, Config, Ref) of
 	{ok, C1, Ref1} ->
 	    {ok, C1, F#state{ref=Ref1}};
 	{error, _} = Err ->
+	    Mod:format_error(Err),
+	    Err
+    catch
+	throw:Err ->
+	    Mod:format_error(Err),
 	    Err
     end.
 

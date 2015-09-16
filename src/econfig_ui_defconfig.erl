@@ -7,12 +7,15 @@
 
 -module(econfig_ui_defconfig).
 
+-include("econfig_log.hrl").
+
 -behaviour(econfig_frontend).
 
 % econfig_frontend behaviour
 -export([start_link/2,
 	 run/3,
-	 terminate/1]).
+	 terminate/1,
+	 format_error/1]).
 
 -record state, {}.
 
@@ -27,6 +30,9 @@ run(Model, Config, Ref) ->
 
 terminate(_Ref) ->
     ok.
+
+format_error(Err) ->
+    ?error("~p", [Err]).
 
 %%%
 %%% Priv

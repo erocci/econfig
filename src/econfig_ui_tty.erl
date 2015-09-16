@@ -15,7 +15,8 @@
 % econfig_frontend behaviour
 -export([start_link/2,
 	 run/3,
-	 terminate/1]).
+	 terminate/1,
+	 format_error/1]).
 
 -record state, {model :: econfig_model:t()}.
 
@@ -29,15 +30,29 @@ run(Model, Config, Ref) ->
 				       undefined -> true
 				   end
 			   end, econfig_model:entries(Model)),
-    C1 = lists:foldl(fun (Entry, C0) ->
-			     econfig_model:eval(Entry, 
+    C0 = eval(Entries, Model, Config),
+    {ok, C0, Ref}.
+
+eval(Entries, Model, Config) ->
+    lists:foldl(fun (Entry, C0) ->
+			case econfig_model:eval(Entry, 
 						fun (E) -> ask(E, C0) end,
-						C0, Model)
-		     end, Config, Entries),
-    {ok, C1, Ref}.
+						C0, Model) of
+			    {error, Err} -> throw(Err);
+			    C1 -> C1
+			end				
+		end, Config, Entries).
 
 terminate(_Ref) ->
     ok.
+
+
+format_error({menu, _Entry, Deps}) ->
+    DepKeys = [ io_lib:format("~p", [econfig_dep:key(Dep)]) || Dep <- Deps ],
+    ?error("At least one of the following variable needs to be set: ~s",
+	   [ string:join(DepKeys, ",") ]);
+format_error(Err) ->
+    ?error("~p", [Err]).
 
 %%%
 %%% Priv
