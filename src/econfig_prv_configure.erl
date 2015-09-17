@@ -64,10 +64,13 @@ format_error(Reason) ->
 %%
 %% Private
 %%
-app_config_model(State, Info) ->
+app_config_model(_State, Info) ->
+    % Reload rebar.config to get proper model, not parent's one
+    Dir = rebar_app_info:dir(Info),
+    Config = rebar_config:consult(Dir),
     AppName = rebar_app_info:name(Info),
     ?debug("Load configuration entries for ~s", [AppName]),
-    { AppName, proplists:get_value(model, rebar_state:get(State, econfig, []), []) }.
+    { AppName, proplists:get_value(model, proplists:get_value(econfig, Config, []), []) }.
 
 configure(Ecfg, Rebar) ->
     case econfig_state:configure(Ecfg) of
