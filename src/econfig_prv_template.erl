@@ -57,27 +57,29 @@ do_app_templates(_AppState, AppInfo, State) ->
     Dir = rebar_app_info:dir(AppInfo),
     Config = rebar_config:consult(Dir),
     Files = proplists:get_value(files, proplists:get_value(econfig, Config, []), []),
+    AppName = rebar_app_info:name(AppInfo),
     {DynamicFiles, OtherFiles} = filter_files(Files),
     lists:foreach(fun (F) -> 
                           Path = filename:join([rebar_app_info:dir(AppInfo), F]),
-                          do_dynamic(Path, State) 
+                          do_dynamic(AppName, Path, State) 
                   end, DynamicFiles),
     lists:foreach(fun (F) ->
                           Path = filename:join([rebar_app_info:dir(AppInfo), F]),
-                          do_static(Path, State) 
+                          do_static(AppName, Path, State) 
                   end, OtherFiles),
     State.
 
-do_dynamic(Filename, State) ->
+do_dynamic(AppName, Filename, State) ->
     Tmpl = filename:join([code:priv_dir(econfig), "script.tmpl"]),
     Data = #{ "econfig.paths" => code_path(),
               "econfig.basedir" => rebar_dir:base_dir(State),
-              "econfig.target" => Filename },
+              "econfig.target" => Filename,
+              "econfig.app" => AppName},
     Bin = bbmustache:compile(bbmustache:parse_file(Tmpl), Data),
     file:write_file(Filename ++ ".script", Bin).
 
-do_static(Filename, State) ->
-    econfig_utils:gen(rebar_dir:basedir(State) ++ ".econfig", Filename, Filename ++ ".in").
+do_static(AppName, Filename, State) ->
+    econfig_utils:gen(AppName, rebar_dir:basedir(State) ++ ".econfig", Filename, Filename ++ ".in").
 
 filter_files(Files) ->
     lists:foldl(

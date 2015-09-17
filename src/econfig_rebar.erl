@@ -16,7 +16,7 @@
 	 state/1,
 	 state/2,
 	 fold_apps/3,
-	 script/3]).
+	 script/4]).
 
 -spec init(rebar_state:t()) -> econfig_state:t().
 init(Rebar) ->
@@ -39,12 +39,12 @@ fold_apps(Fun, Acc, State) ->
     fold_app(Fun, ProjectApps ++ Deps, Acc, State).
 
 
--spec script(Basedir :: filename:file(), Config :: [term()], Target :: filename:file()) -> [term()].
-script(Basedir, Config, Target) ->
+-spec script(AppName :: atom(), Basedir :: filename:file(), Config :: [term()], Target :: filename:file()) -> [term()].
+script(AppName, Basedir, Config, Target) ->
     Ecfg = init_(Basedir),
     Tmpl = Target ++ ".in",
     Tmpfile = econfig_utils:mktemp(Target),
-    ok = econfig_utils:gen(Ecfg, Tmpfile, Tmpl),
+    ok = econfig_utils:gen(AppName, Ecfg, Tmpfile, Tmpl),
     case file:consult(Tmpfile) of
 	{ok, Config2} ->
 	    file:delete(Tmpfile),

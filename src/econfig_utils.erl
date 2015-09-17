@@ -11,7 +11,7 @@
 
 -export([mktemp/1,
 	 system_tmpdir/0,
-	 gen/3,
+	 gen/4,
 	 cmd/1,
 	 cmd/2,
 	 pp_timestamp/0,
@@ -38,15 +38,15 @@ pp_timestamp() ->
     io_lib:format("~b-~2..0b-~2..0b ~2..0b:~2..0b:~2..0b", [Y,M,D,H,Min,S]).
 
 
--spec gen(Ecfg :: econfig_state:t(), Target :: filename:file(), Tmpl :: filename:file()) -> ok | {error, term()}.
-gen(Ecfg, Target, Tmpl) ->
+-spec gen(AppName :: atom(), Ecfg :: econfig_state:t(), Target :: filename:file(), Tmpl :: filename:file()) -> ok | {error, term()}.
+gen(AppName, Ecfg, Target, Tmpl) ->
     case filelib:is_regular(Tmpl) of
 	true ->
 	    case econfig_state:load(Ecfg) of
 		{error, _} -> ok;
 		Ecfg2 ->
 		    Config = econfig_state:config(Ecfg2),
-		    Bin = bbmustache:compile(bbmustache:parse_file(Tmpl), econfig_config:hash(Config)),
+		    Bin = bbmustache:compile(bbmustache:parse_file(Tmpl), econfig_config:hash(AppName, #{}, Config)),
 		    write(Target, Bin)
 	    end;
 	false ->

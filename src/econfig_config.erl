@@ -19,7 +19,8 @@
 	 render/3,
 	 render/4,
 	 hash/1,
-	 hash/2]).
+	 hash/2,
+	 hash/3]).
 
 -record state, {
 	  tid        :: ets:tid()
@@ -102,26 +103,26 @@ set(Key, Val, #state{tid=Tid}=S) ->
 
 -spec hash(Config :: t()) -> #{}.
 hash(Config) ->
-    hash(#{}, Config).
+    hash(undefined, #{}, Config).
 
 
 -spec hash(Data :: #{}, Config :: t()) -> #{}.
 hash(Data, Config) ->
     hash(undefined, Data, Config).
 
-%%%
-%%% Priv
-%%%
-hash(LocalNS, Data, #state{tid=Tid}) ->
+
+hash(CurrentNS, Data, #state{tid=Tid}) ->
     ets:foldl(fun ({{App, Key}, Val}, Acc) ->
 		      Acc2 = case App of
-				 LocalNS -> Acc#{ atom_to_list(Key) => Val };
+				 CurrentNS -> Acc#{ atom_to_list(Key) => Val };
 				 _ -> Acc
 			     end,
 		      Acc2#{ render_key(App, Key) => Val }
 	      end, Data, Tid).
 
-
+%%%
+%%% Priv
+%%%
 -spec populate(econfig_config(), t()) -> t().
 populate(C, S) ->
     lists:foreach(fun ({Key, Val}) ->
