@@ -53,8 +53,10 @@ format_error(Reason) ->
 %%
 %% Private
 %%
-do_app_templates(AppState, AppInfo, State) ->
-    Files = proplists:get_value(files, rebar_state:get(AppState, econfig, []), []),
+do_app_templates(_AppState, AppInfo, State) ->
+    Dir = rebar_app_info:dir(AppInfo),
+    Config = rebar_config:consult(Dir),
+    Files = proplists:get_value(files, proplists:get_value(econfig, Config, []), []),
     {DynamicFiles, OtherFiles} = filter_files(Files),
     lists:foreach(fun (F) -> 
                           Path = filename:join([rebar_app_info:dir(AppInfo), F]),
