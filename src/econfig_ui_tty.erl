@@ -83,7 +83,7 @@ prompt(E) ->
     io_lib:format("(~p.~p) ~s [~s] : ", [App, Key, Desc, prompt_default(Type, Default)]).
 
 prompt_default(boolean, true) -> "Y/n";
-prompt_default(boolean, false) -> "n/Y";
+prompt_default(boolean, false) -> "y/N";
 
 prompt_default(string, Dft) -> "str, default: \"" ++ Dft ++ "\"";
 
