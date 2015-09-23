@@ -66,7 +66,6 @@ init_(Basedir) ->
 fold_app(_, [], Acc, _State) ->
     Acc;
 fold_app(Fun, [ App | Tail ], Acc, State) ->
-    AppState = rebar_app_info:state_or_new(State, App),
-    fold_app(Fun, Tail, Fun(AppState, App, Acc), State).
+    fold_app(Fun, Tail, Fun(App, Acc), State).
 
 

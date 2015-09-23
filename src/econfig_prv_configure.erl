@@ -41,8 +41,8 @@ init(State) ->
 do(State) ->
     ?info("Configuring application...", []),
     Ecfg = econfig_rebar:state(State),
-    Models = econfig_rebar:fold_apps(fun (AppState, AppInfo, Acc) ->
-                                             [ app_config_model(AppState, AppInfo) | Acc ]
+    Models = econfig_rebar:fold_apps(fun (AppInfo, Acc) ->
+                                             [ app_config_model(AppInfo) | Acc ]
                                      end, [], State),
     case econfig_state:models(Models, Ecfg) of
         {error, _} = Err -> Err;
@@ -64,7 +64,7 @@ format_error(Reason) ->
 %%
 %% Private
 %%
-app_config_model(_State, Info) ->
+app_config_model(Info) ->
     % Reload rebar.config to get proper model, not parent's one
     Dir = rebar_app_info:dir(Info),
     Config = rebar_config:consult(Dir),

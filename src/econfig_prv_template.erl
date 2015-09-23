@@ -40,8 +40,8 @@ init(State) ->
 -spec do(rebar_state:t()) -> {ok, rebar_state:t()} | {error, string()}.
 do(State) ->
     S1 = econfig_rebar:fold_apps(
-           fun (AppState, AppInfo, StateAcc) ->
-                   do_app_templates(AppState, AppInfo, StateAcc)
+           fun (AppInfo, StateAcc) ->
+                   do_app_templates(AppInfo, StateAcc)
            end, State, State),
     {ok, S1}.
 
@@ -53,7 +53,7 @@ format_error(Reason) ->
 %%
 %% Private
 %%
-do_app_templates(_AppState, AppInfo, State) ->
+do_app_templates(AppInfo, State) ->
     Dir = rebar_app_info:dir(AppInfo),
     Config = rebar_config:consult(Dir),
     Files = proplists:get_value(files, proplists:get_value(econfig, Config, []), []),
