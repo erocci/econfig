@@ -1,9 +1,27 @@
+# Garbage
 *~
+erl_crash.dump
+
+# Generic erlang build output
 *.beam
-.econfig
-/ebin/econfig
-/rebar.lock
-/_build
+*.app
+/deps
+/*.d
+/.erlang.mk
+
+# Specific build output
+/src/econfig.app.src
 /econfig
-/.rebar3
-/ebin
+
+# Dialyzer output
+/.*.plt
+/.deps_plt
+
+# Test output
+/.eunit
+/log/
+/logs/
+
+# Dist
+econfig-*/
+econfig-*.tar.xz

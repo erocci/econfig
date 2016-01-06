@@ -40,8 +40,8 @@ log(Lvl, Msg, Data) ->
 %%%
 do_log(escript, Lvl, Msg, Data, Max) when Lvl =< Max ->
     log_tty(Lvl, Msg, Data);
-do_log(rebar, Lvl, Msg, Data, Max) when Lvl =< Max ->
-    log_rebar(Lvl, Msg, Data);
+%do_log(rebar, Lvl, Msg, Data, Max) when Lvl =< Max ->
+%    log_rebar(Lvl, Msg, Data);
 do_log(_, Lvl, Msg, Data, Max) when Lvl =< Max ->
     log_erts(Lvl, Msg, Data);
 do_log(_, _, _, _, _) ->
@@ -67,11 +67,11 @@ log_tty(?LVL_ERROR, Msg, Data) ->
     io:format(standard_error, "E: " ++ Msg, Data).
 
 
-log_rebar(?LVL_DEBUG, Msg, Data) ->
-    rebar_log:log(debug, Msg, Data);
-log_rebar(?LVL_INFO, Msg, Data) ->
-    rebar_log:log(info, Msg, Data);
-log_rebar(?LVL_WARN, Msg, Data) ->
-    rebar_log:log(warn, Msg, Data);
-log_rebar(?LVL_ERROR, Msg, Data) ->
-    rebar_log:log(error, Msg, Data).
+%log_rebar(?LVL_DEBUG, Msg, Data) ->
+%    rebar_log:log(debug, Msg, Data);
+%log_rebar(?LVL_INFO, Msg, Data) ->
+%    rebar_log:log(info, Msg, Data);
+%log_rebar(?LVL_WARN, Msg, Data) ->
+%    rebar_log:log(warn, Msg, Data);
+%log_rebar(?LVL_ERROR, Msg, Data) ->
+%    rebar_log:log(error, Msg, Data).
