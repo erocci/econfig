@@ -23,7 +23,9 @@ start_link(_, _) ->
     {ok, #state{}}.
 
 run(Model, Config, Ref) ->
-    C1 = lists:foldl(fun ({Key, _, _, Default, _}, C0) ->
+    C1 = lists:foldl(fun (Entry, C0) ->
+			     Key = econfig_entry:key(Entry),
+			     Default = econfig_entry:default(Entry),
 			     econfig_config:set(Key, Default, C0)
 		     end, Config, econfig_model:entries(Model)),
     {ok, C1, Ref}.

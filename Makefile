@@ -23,6 +23,8 @@ include erlang.mk
 
 all:: escript
 
+test-build:: escript
+
 ebin/$(PROJECT).app:: src/$(PROJECT).app.src
 
 src/$(PROJECT).app.src: src/$(PROJECT).app.src.in

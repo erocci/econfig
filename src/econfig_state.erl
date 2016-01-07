@@ -30,7 +30,6 @@
 
 -export_type([t/0]).
 
-
 -spec new(Basedir :: filename:file()) -> t().
 new(Basedir) ->
     #state{
@@ -66,15 +65,27 @@ models(Models, S) ->
 	    {error, Err}
     end.
 
--spec parse_models(Dirs :: [filename:file()], t()) -> t() | {error, term()}.
-parse_models(Dirs, S) ->
-    Filenames = [ filename:join([Dir, "Econfig"]) || Dir <- Dirs],
-    case load_models(Filenames) of
-	{ok, Model} ->
-	    S#state{model=Model};
-	{error, _} = Err -> 
-	    Err
-    end.
+-spec parse_models(Models :: [{App :: atom(), Dir :: filename:file()}], t()) -> t() | {error, term()}.
+parse_models(Models, S) ->
+    AppEntries = lists:foldl(fun ({App, Dir}, Acc) ->
+				     Absdir = filename:absname(Dir, basedir(S)),
+				     Filename = filename:join([Absdir, "Econfig"]),
+				     case file:consult(Filename) of
+					 {ok, Entries} ->
+					     ?debug("Loaded model for ~s from ~s", [App, Filename]),
+					     [{App, Entries} | Acc];
+					 {error, enoent} ->
+					     ?debug("No model found in ~s", [Absdir]),
+					     Acc;
+					 {error, {Line, erl_parse, ParseErr}} ->
+					     ?warn("Error parsing ~s, line ~p: ~s", [Filename, Line, ParseErr]),
+					     Acc;
+					 {error, _} = Err ->
+					     throw(Err)
+				     end
+			     end, [], Models),
+    ConfigModel = compile(AppEntries),
+    S#state{model=ConfigModel}.
 
 -spec configure(t()) -> t() | {error, term()}.
 configure(#state{config=C, model=Model}=S) ->
@@ -100,30 +111,3 @@ compile(Entries) ->
 				econfig_model:entries(AppName, AppEntries, Acc)
 			end, M0, Entries),
     econfig_model:compile(Model).
-
-load_models(Filenames) ->
-    AppEntries = lists:foldl(fun (Filename, Acc) ->
-				     case load_model(Filename) of
-					 {ok, {App, Model}} ->
-					     ?debug("Loaded model from ~s~n", [Filename]),
-					     [{App, Model} | Acc];
-					 {error, enoent} ->
-					     Acc;
-					 {error, {Line, erl_parse, ParseErr}} ->
-					     ?warn("Error parsing ~s, line ~p: ~s", [Filename, Line, ParseErr]),
-					     Acc;
-					 {error, _} = Err ->
-					     throw(Err)
-				     end
-			     end, [], Filenames),
-    ConfigModel = compile(AppEntries),
-    {ok, ConfigModel}.
-
-load_model(Filename) ->
-    App = filename:basename(filename:dirname(Filename)),
-    case file:consult(Filename) of
-	{ok, Entries} ->
-	    {ok, {list_to_atom(App), Entries}};
-	{error, _} = Err ->
-	    Err
-    end.

@@ -21,6 +21,7 @@
 -define(argspec, [
 		  {overwrite, $o, "overwrite", {boolean, false}, "Overwrite existing config"},
 		  {frontend,  $f, "frontend",  {string, "tty"},  "User frontend " ++ ?frontends_str},
+		  {cwd,       $C, "dir",       string,           "Change working directory"},
 		  {verbose,   $v, "verbose",   integer,          "Verbose (multiple times increase verbosity)"},
 		  {help,      $h, "help",      undefined,        "Show this help"}
 		 ]).
@@ -51,31 +52,49 @@ run(Args) ->
 %%%
 %%% Priv
 %%%
--spec start(Cmd :: econfig_cmd(), Dirs :: [filename:file()], Opts :: [econfig_opts()]) -> ok.
-start(Cmd, Dirs, Opts) ->
+-spec start(Cmd :: econfig_cmd(), Models :: [string()], Opts :: [econfig_opts()]) -> ok.
+start(Cmd, Models, Opts) ->
     application:load(econfig),
     application:set_env(econfig, caller,    escript),
     application:set_env(econfig, frontend,  frontend(proplists:get_value(frontend, Opts))),
     application:set_env(econfig, log,       proplists:get_value(verbose, Opts, 0)),
     {ok, _} = application:ensure_all_started(econfig),
-    {ok, Cwd} = file:get_cwd(),
+    Cwd = case proplists:get_value(cwd, Opts) of
+	      undefined -> {ok, Dir} = file:get_cwd(), Dir;
+	      Dir -> Dir
+	  end,
+    ?debug("Set current working dir: ~s", [Cwd]),
     S = econfig_state:new(Cwd),
     case econfig_state:load(S) of
 	{error, _} = Err ->
 	    Err;
 	S2 ->
-	    init_models(Cmd, Dirs, S2)
+	    init_models(Cmd, Models, S2)
     end.
 
 init_models(Cmd, [], State) ->
-    {ok, Cwd} = file:get_cwd(),
+    ?debug("No model specified: load from current dir", []),
+    Cwd = econfig_state:basedir(State),
     init_models(Cmd, [Cwd], State);
-init_models(Cmd, Dirs, State) ->
-    case econfig_state:parse_models(Dirs, State) of
+init_models(Cmd, ModelsDef, State) ->
+    case econfig_state:parse_models(parse_models_list(ModelsDef, []), State) of
 	{error, _} = Err ->
 	    Err;
 	S2 ->
 	    command(Cmd, S2)
+    end.
+
+parse_models_list([], Acc) ->
+    lists:reverse(Acc);
+parse_models_list([ Str | Tail], Acc) ->
+    case string:tokens(Str, ":") of
+	[Dir] ->
+	    App = filename:basename(Dir),
+	    parse_models_list(Tail, [{list_to_atom(App), Dir} | Acc]);
+	[AppStr, Dir] ->
+	    parse_models_list(Tail, [{list_to_atom(AppStr), Dir} | Acc]);
+	_ ->
+	    throw({model_list_parse_error, Str})
     end.
 
 command(print, State) ->
@@ -106,9 +125,15 @@ usage() ->
     getopt:usage(?argspec, atom_to_list(?MODULE), 
 		 "command [<dir ...>]",
 		 [{"command", "configure | print"},
-		  {"<dir ...>", "List of dirs containing Econfig files (default: PWD)"}]),
+		  {"<models ...>", "Space separated list of models. "
+		   "Form is 'ns:/path/to/dir' or '/path/to/dir'. In case 'ns' is ommitted, "
+		   "default to basename(/path/to/dir) [default: <cwd>]"}]),
     ok.
 
+
+handle_error({model_list_parse_error, Str}) ->
+    io:format("E: Invalid model list definition: ~s~n", [Str]),
+    erlang:halt(1);
 
 handle_error({invalid_filename, F}) ->
     io:format("E: Invalid filename: ~p~n", [F]),
