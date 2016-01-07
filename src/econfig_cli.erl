@@ -67,6 +67,9 @@ start(Cmd, Dirs, Opts) ->
 	    init_models(Cmd, Dirs, S2)
     end.
 
+init_models(Cmd, [], State) ->
+    {ok, Cwd} = file:get_cwd(),
+    init_models(Cmd, [Cwd], State);
 init_models(Cmd, Dirs, State) ->
     case econfig_state:parse_models(Dirs, State) of
 	{error, _} = Err ->
@@ -101,9 +104,9 @@ frontend(Frontend) ->
 
 usage() ->
     getopt:usage(?argspec, atom_to_list(?MODULE), 
-		 "command <dir ...>",
+		 "command [<dir ...>]",
 		 [{"command", "configure | print"},
-		  {"<dir ...>", "List of dirs containing Econfig files"}]),
+		  {"<dir ...>", "List of dirs containing Econfig files (default: PWD)"}]),
     ok.
 
 
