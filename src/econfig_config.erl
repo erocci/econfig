@@ -11,23 +11,23 @@
 -include("econfig_log.hrl").
 
 -export([new/0,
-	 new/1,
-	 load/2,
-	 lookup/2,
-	 set/3,
-	 store/2,
-	 render/3,
-	 render/4,
-	 hash/1,
-	 hash/2,
-	 hash/3]).
+		 new/1,
+		 load/2,
+		 lookup/2,
+		 set/3,
+		 store/2,
+		 render/3,
+		 render/4,
+		 hash/1,
+		 hash/2,
+		 hash/3]).
 
 %% Pretty printer
 -export([pp/1]).
 
 -record state, {
-	  tid        :: ets:tid()
-	 }.
+		  tid        :: ets:tid()
+		 }.
 -type t() :: #state{}.
 -export_type([t/0]).
 
@@ -39,28 +39,28 @@ new() ->
 new(Econfig) ->
     S = new(),
     case application:get_env(econfig, overwrite, false) of
-	true ->
-	    S;
-	false ->
-	    case load(Econfig, S) of
-		{error, enoent} -> S;
-		{error, Err} -> throw(Err);
-		#state{} = S1 -> S1
-	    end
+		true ->
+			S;
+		false ->
+			case load(Econfig, S) of
+				{error, enoent} -> S;
+				{error, Err} -> throw(Err);
+				#state{} = S1 -> S1
+			end
     end.
 
 -spec load(filename:file(), t()) -> t() | {error, term()}.
 load(Filename, S) ->
     case file:consult(Filename) of
-	{ok, Config} ->
-	    ?debug("Load config from ~s", [Filename]),
-	    populate(Config, S);
-	{error, enoent} ->
-	    ?debug("No config found in ~s", [Filename]),
-	    S;
-	{error, _} = Err ->
-	    ?debug("Error loading ~s", [Filename]),
-	    Err
+		{ok, Config} ->
+			?debug("Load config from ~s", [Filename]),
+			populate(Config, S);
+		{error, enoent} ->
+			?debug("No config found in ~s", [Filename]),
+			S;
+		{error, _} = Err ->
+			?debug("Error loading ~s", [Filename]),
+			Err
     end.
 
 
@@ -68,11 +68,11 @@ load(Filename, S) ->
 store(Filename, #state{}=S) ->
     ?debug("Writing config to ~s", [Filename]),
     case file:write_file(Filename, [ io_lib:format("~tp.~n", [Term]) || Term <- to_list(S) ]) of
-	ok ->
-	    ?info("Config written in ~s", [Filename]),
-	    ok;
-	{error, _} = Err ->
-	    Err
+		ok ->
+			?info("Config written in ~s", [Filename]),
+			ok;
+		{error, _} = Err ->
+			Err
     end.
 
 -spec render(LocalNS :: atom(), Filename :: file:name_all(), Config :: t()) -> ok | {error, econfig_err()}.
@@ -84,20 +84,20 @@ render(LocalNS, Target, Config) ->
 render(LocalNS, Target, Data, #state{}=Config) ->
     TmplName = Target ++ ".in",
     case filelib:is_regular(TmplName) of
-	true ->
-	    Tmpl = bbmustache:parse_file(TmplName),
-	    Data2 = hash(LocalNS, Data, Config),
-	    file:write_file(Target, bbmustache:compile(Tmpl, Data2));
-	false ->
-	    throw({missing_source, TmplName})
+		true ->
+			Tmpl = bbmustache:parse_file(TmplName),
+			Data2 = hash(LocalNS, Data, Config),
+			file:write_file(Target, bbmustache:compile(Tmpl, Data2));
+		false ->
+			throw({missing_source, TmplName})
     end.
 
 
 -spec lookup(Key :: econfig_entry_key(), t()) -> {ok, econfig_value()} | undefined.
 lookup(Key, #state{tid=Tid}) ->
     case ets:lookup(Tid, Key) of
-	[] -> undefined;
-	[{_Key, Val} | _] -> {ok, Val}
+		[] -> undefined;
+		[{_Key, Val} | _] -> {ok, Val}
     end.
 
 
@@ -119,18 +119,18 @@ hash(Data, Config) ->
 
 hash(CurrentNS, Data, #state{tid=Tid}) ->
     ets:foldl(fun ({{App, Key}, Val}, Acc) ->
-		      Acc2 = case App of
-				 CurrentNS -> Acc#{ atom_to_list(Key) => Val };
-				 _ -> Acc
-			     end,
-		      Acc2#{ render_key(App, Key) => Val }
-	      end, Data, Tid).
+					  Acc2 = case App of
+								 CurrentNS -> Acc#{ atom_to_list(Key) => Val };
+								 _ -> Acc
+							 end,
+					  Acc2#{ render_key(App, Key) => Val }
+			  end, Data, Tid).
 
 -spec pp(t()) -> ok.
 pp(S) ->
     lists:foreach(fun ({Key, Val}) ->
-			  io:format("~s=~s~n", [Key, render_val(Val)])
-		  end, to_list(S)).
+						  io:format("~s=~s~n", [Key, render_val(Val)])
+				  end, to_list(S)).
 
 %%%
 %%% Priv
@@ -138,23 +138,23 @@ pp(S) ->
 -spec populate(econfig_config(), t()) -> t().
 populate(C, S) ->
     lists:foreach(fun ({Key, Val}) ->
-			  set(parse_key(Key), Val, S)
-		  end, C),
+						  set(parse_key(Key), Val, S)
+				  end, C),
     S.
 
 
 to_list(#state{tid=Tid}) ->
     ets:foldl(fun ({{App, Key}, Val}, Acc) ->
-		      [{render_key(App, Key), Val} | Acc]
-	      end, [], Tid).
+					  [{render_key(App, Key), Val} | Acc]
+			  end, [], Tid).
 
 
 parse_key(Key) ->
     case string:tokens(Key, ".") of
-	[App | Rest] ->
-	    {list_to_atom(App), list_to_atom(string:join(Rest, "."))};
-	_ ->
-	    throw({badentry, Key})
+		[App | Rest] ->
+			{list_to_atom(App), list_to_atom(string:join(Rest, "."))};
+		_ ->
+			throw({badentry, Key})
     end.
 
 
