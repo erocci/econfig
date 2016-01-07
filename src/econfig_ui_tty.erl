@@ -12,11 +12,11 @@
 
 -behaviour(econfig_frontend).
 
-% econfig_frontend behaviour
+%% econfig_frontend behaviour
 -export([start_link/2,
-	 run/3,
-	 terminate/1,
-	 format_error/1]).
+				 run/3,
+				 terminate/1,
+				 format_error/1]).
 
 -record state, {model :: econfig_model:t()}.
 
@@ -25,23 +25,23 @@ start_link(Model, _) ->
 
 run(Model, Config, Ref) ->
     Entries = lists:filter(fun (Entry) ->
-				   case econfig_config:lookup(econfig_entry:key(Entry), Config) of
-				       {ok, _} -> false;
-				       undefined -> true
-				   end
-			   end, econfig_model:entries(Model)),
+																	 case econfig_config:lookup(econfig_entry:key(Entry), Config) of
+																			 {ok, _} -> false;
+																			 undefined -> true
+																	 end
+													 end, econfig_model:entries(Model)),
     C0 = eval(Entries, Model, Config),
     {ok, C0, Ref}.
 
 eval(Entries, Model, Config) ->
     lists:foldl(fun (Entry, C0) ->
-			case econfig_model:eval(Entry, 
-						fun (E) -> ask(E, C0) end,
-						C0, Model) of
-			    {error, Err} -> throw(Err);
-			    C1 -> C1
-			end				
-		end, Config, Entries).
+												case econfig_model:eval(Entry, 
+																								fun (E) -> ask(E, C0) end,
+																								C0, Model) of
+														{error, Err} -> throw(Err);
+														C1 -> C1
+												end				
+								end, Config, Entries).
 
 terminate(_Ref) ->
     ok.
@@ -50,7 +50,7 @@ terminate(_Ref) ->
 format_error({menu, _Entry, Deps}) ->
     DepKeys = [ io_lib:format("~p", [econfig_dep:key(Dep)]) || Dep <- Deps ],
     ?error("At least one of the following variable needs to be set: ~s",
-	   [ string:join(DepKeys, ",") ]);
+					 [ string:join(DepKeys, ",") ]);
 format_error(Err) ->
     ?error("~p", [Err]).
 
@@ -59,20 +59,20 @@ format_error(Err) ->
 %%%
 ask(Entry, Config) ->
     case io:get_line(prompt(Entry)) of
-	{error, Err} -> throw(Err);
-	eof -> throw({invalid_input, eof});
-	Data -> 
-	    Type = econfig_entry:type(Entry),
-	    Default = econfig_entry:default(Entry),
-	    case cast(strip(Data), Type, Default) of
-		{error, {invalid_input, V}} ->
-		    io:format("E: Invalid value: ~p~n", [V]),
-		    ask(Entry, Config);
-		{error, {invalid_type, T}} ->
-		    throw({invalid_type, T});
-		V -> 
-		    V
-	    end
+				{error, Err} -> throw(Err);
+				eof -> throw({invalid_input, eof});
+				Data -> 
+						Type = econfig_entry:type(Entry),
+						Default = econfig_entry:default(Entry),
+						case cast(strip(Data), Type, Default) of
+								{error, {invalid_input, V}} ->
+										io:format("E: Invalid value: ~p~n", [V]),
+										ask(Entry, Config);
+								{error, {invalid_type, T}} ->
+										throw({invalid_type, T});
+								V -> 
+										V
+						end
     end.
 
 prompt(E) ->
@@ -89,17 +89,17 @@ prompt_default(string, Dft) -> "str, default: \"" ++ Dft ++ "\"";
 
 prompt_default({enum, Opts}, Dft) ->
     string:join(lists:map(fun (Opt) when Opt =:= Dft ->
-				  string:to_upper(atom_to_list(Dft));
-			      (Opt) ->
-				  atom_to_list(Opt)
-			  end, Opts), "|");
+																	string:to_upper(atom_to_list(Dft));
+															(Opt) ->
+																	atom_to_list(Opt)
+													end, Opts), "|");
 
 prompt_default(integer, Dft) -> 
     io_lib:format("int, default: ~b", [Dft]);
 
 prompt_default({range, Min, Max}, Dft) -> 
     io_lib:format("~b-~b, default: ~b", [Min, Max, Dft]).
-    
+
 
 cast([], _Type, Default) -> Default;
 
@@ -114,19 +114,19 @@ cast(V, {enum, Opts}, _) -> cast_enum(V, Opts);
 
 cast(V, integer, _) ->
     try list_to_integer(V) of
-	I -> I
+				I -> I
     catch _:badarg ->
-	    {error, {invalid_input, V}}
+						{error, {invalid_input, V}}
     end;
 
 cast(V, {range, Min, Max}, _) ->
     try list_to_integer(V) of
-	I when I >= Min, I =< Max -> I;
-	_ -> {error, {invalid_input, V}}
+				I when I >= Min, I =< Max -> I;
+				_ -> {error, {invalid_input, V}}
     catch _:badarg ->
-	    {error, {invalid_input, V}}
+						{error, {invalid_input, V}}
     end;
-    
+
 cast(_, Type, _) ->
     {error, {invalid_type, Type}}.
 
@@ -134,8 +134,8 @@ cast(_, Type, _) ->
 cast_enum(V, []) -> {error, {invalid_input, V}};
 cast_enum(V, [Opt | Opts]) ->
     case atom_to_list(Opt) of
-	V -> Opt;
-	_ -> cast_enum(V, Opts)
+				V -> Opt;
+				_ -> cast_enum(V, Opts)
     end.
 
 
