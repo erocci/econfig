@@ -11,7 +11,7 @@ $(foreach dep,$(ALL_DEPS),$(if $(call localdep,$(dep)),$(eval LOCAL_DEPS+=$(dep)
 dep_getopt = git https://github.com/jcomellas/getopt.git v0.8.2
 dep_bbmustache = git https://github.com/soranoba/bbmustache.git v1.0.4
 
-ESCRIPT_EMU_ARGS = -smp auto -pa . -noshell -noinput -sasl errlog_type error -escript main econfig
+ESCRIPT_EMU_ARGS = -smp auto -pa . -noshell -sasl errlog_type error -escript main econfig
 
 COMPILE_FIRST = econfig_frontend
 
