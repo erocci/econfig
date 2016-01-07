@@ -10,6 +10,7 @@
 -include("econfig_log.hrl").
 
 -export([mktemp/1,
+	 canonical/1,
 	 system_tmpdir/0,
 	 gen/4,
 	 cmd/1,
@@ -22,6 +23,14 @@ mktemp(Template) ->
     TmpDir = system_tmpdir(),
     mktemp_(TmpDir, Template).
 
+
+canonical(Filename) ->
+    case filename:pathtype(Filename) of
+	absolute ->
+	    canonical2(filename:split(Filename), []);
+	_ ->
+	    throw({relative, Filename})
+    end.
 
 system_tmpdir() ->
     case erlang:system_info(system_architecture) of
@@ -111,3 +120,14 @@ loop_cmd(Port, Data, Timeout) ->
     after Timeout ->
 	    {error, timeout}
     end.
+
+canonical2([], Acc) ->
+    filename:join(lists:reverse(Acc));
+canonical2([".." | Tail], ["/"]) ->
+    canonical2(Tail, ["/"]);
+canonical2([".." | Tail], [_ | Acc]) ->
+    canonical2(Tail, Acc);
+canonical2(["." | Tail], Acc) ->
+    canonical2(Tail, Acc);
+canonical2([Name | Tail], Acc) ->
+    canonical2(Tail, [Name | Acc]).

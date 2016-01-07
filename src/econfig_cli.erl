@@ -61,7 +61,7 @@ start(Cmd, Models, Opts) ->
     {ok, _} = application:ensure_all_started(econfig),
     Cwd = case proplists:get_value(cwd, Opts) of
 	      undefined -> {ok, Dir} = file:get_cwd(), Dir;
-	      Dir -> Dir
+	      Dir -> econfig_utils:canonical(filename:absname(Dir))
 	  end,
     ?debug("Set current working dir: ~s", [Cwd]),
     S = econfig_state:new(Cwd),

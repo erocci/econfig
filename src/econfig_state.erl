@@ -68,7 +68,7 @@ models(Models, S) ->
 -spec parse_models(Models :: [{App :: atom(), Dir :: filename:file()}], t()) -> t() | {error, term()}.
 parse_models(Models, S) ->
     AppEntries = lists:foldl(fun ({App, Dir}, Acc) ->
-				     Absdir = filename:absname(Dir, basedir(S)),
+				     Absdir = econfig_utils:canonical(filename:absname(Dir, basedir(S))),
 				     Filename = filename:join([Absdir, "Econfig"]),
 				     case file:consult(Filename) of
 					 {ok, Entries} ->
