@@ -1,0 +1,1 @@
+{config1, "A configuration entry", boolean, true, []}.
