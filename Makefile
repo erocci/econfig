@@ -5,7 +5,7 @@ define localdep =
 $(shell erl -noshell -eval "case application:ensure_all_started($1) of {ok, _} -> halt(0); _ -> halt(1) end." && echo ok || true)
 endef
 
-ALL_DEPS = cowboy getopt
+ALL_DEPS = getopt bbmustache
 $(foreach dep,$(ALL_DEPS),$(if $(call localdep,$(dep)),$(eval LOCAL_DEPS+=$(dep)),$(eval DEPS+=$(dep))))
 
 dep_getopt = git https://github.com/jcomellas/getopt.git v0.8.2
