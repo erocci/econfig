@@ -22,6 +22,9 @@
 	 hash/2,
 	 hash/3]).
 
+%% Pretty printer
+-export([pp/1]).
+
 -record state, {
 	  tid        :: ets:tid()
 	 }.
@@ -52,8 +55,11 @@ load(Filename, S) ->
 	{ok, Config} ->
 	    ?debug("Load config from ~s", [Filename]),
 	    populate(Config, S);
-	{error, _} = Err ->
+	{error, enoent} ->
 	    ?debug("No config found in ~s", [Filename]),
+	    S;
+	{error, _} = Err ->
+	    ?debug("Error loading ~s", [Filename]),
 	    Err
     end.
 
@@ -120,6 +126,12 @@ hash(CurrentNS, Data, #state{tid=Tid}) ->
 		      Acc2#{ render_key(App, Key) => Val }
 	      end, Data, Tid).
 
+-spec pp(t()) -> ok.
+pp(S) ->
+    lists:foreach(fun ({Key, Val}) ->
+			  io:format("~s=~s~n", [Key, render_val(Val)])
+		  end, to_list(S)).
+
 %%%
 %%% Priv
 %%%
@@ -148,3 +160,9 @@ parse_key(Key) ->
 
 render_key(App, Key) ->
     string:join([atom_to_list(App), atom_to_list(Key)], ".").
+
+render_val(true)  -> "1";
+render_val(false) -> "0";
+render_val(V) when is_atom(V) -> atom_to_list(V);
+render_val(V) when is_integer(V) -> integer_to_list(V);
+render_val(V) -> io_lib:format("~p", [V]).

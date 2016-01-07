@@ -71,7 +71,7 @@ parse_models(Dirs, S) ->
     Filenames = [ filename:join([Dir, "Econfig"]) || Dir <- Dirs],
     case load_models(Filenames) of
 	{ok, Model} ->
-	    {ok, S#state{model=Model}};
+	    S#state{model=Model};
 	{error, _} = Err -> 
 	    Err
     end.

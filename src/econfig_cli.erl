@@ -54,26 +54,37 @@ run(Args) ->
 -spec start(Cmd :: econfig_cmd(), Dirs :: [filename:file()], Opts :: [econfig_opts()]) -> ok.
 start(Cmd, Dirs, Opts) ->
     application:load(econfig),
+    application:set_env(econfig, caller,    escript),
     application:set_env(econfig, frontend,  frontend(proplists:get_value(frontend, Opts))),
     application:set_env(econfig, log,       proplists:get_value(verbose, Opts, 0)),
     {ok, _} = application:ensure_all_started(econfig),
-    case econfig_srv:load(Dirs) of
-	ok ->
-	    command(cmd(Cmd));
+    {ok, Cwd} = file:get_cwd(),
+    S = econfig_state:new(Cwd),
+    case econfig_state:load(S) of
 	{error, _} = Err ->
-	    Err
+	    Err;
+	S2 ->
+	    init_models(Cmd, Dirs, S2)
     end.
 
-command(print) ->
-    econfig_srv:print(),
+init_models(Cmd, Dirs, State) ->
+    case econfig_state:parse_models(Dirs, State) of
+	{error, _} = Err ->
+	    Err;
+	S2 ->
+	    command(Cmd, S2)
+    end.
+
+command(print, State) ->
+    econfig_config:pp(econfig_state:config(State)),
     ok;
 
-command(configure) ->
-    case econfig_srv:configure() of
-	{ok, C} ->
-	    econfig_config:store(C);
+command(configure, State) ->
+    case econfig_state:configure(State) of
 	{error, Err} ->
-	    handle_error(Err)
+	    handle_error(Err);
+	S2 ->
+	    econfig_state:store(S2)
     end.
 
 cmd("configure") -> configure;
@@ -129,5 +140,9 @@ handle_error({missing_source, F}) ->
     erlang:halt(1);
 
 handle_error(Err) ->
-    io:format("E: ~p~n", [Err]),
+    case econfig_log:is_debug() of
+	true -> erlang:display(erlang:get_stacktrace());
+	false -> ok
+    end,
+    io:format("E: internal error (~p)~n", [Err]),
     erlang:halt(1).
