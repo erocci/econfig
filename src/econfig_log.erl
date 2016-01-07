@@ -19,6 +19,8 @@
 	 error/2,
 	 log/3]).
 
+-export([is_debug/0]).
+
 debug(Msg) -> log(?LVL_DEBUG, Msg ++ "~n", []).
 debug(Msg, Data) -> log(?LVL_DEBUG, Msg, Data).
 
@@ -35,6 +37,11 @@ log(Lvl, Msg, Data) ->
     MaxLevel = application:get_env(econfig, log, ?LVL_INFO),
     Handler = application:get_env(econfig, caller, escript),
     do_log(Handler, Lvl, Msg, Data, MaxLevel).
+
+-spec is_debug() -> boolean().
+is_debug() ->
+    application:get_env(econfig, log, ?LVL_INFO) >= ?LVL_DEBUG.
+
 %%%
 %%% Priv
 %%%
@@ -58,13 +65,13 @@ log_erts(?LVL_ERROR, Msg, Data) ->
 
 
 log_tty(?LVL_DEBUG, Msg, Data) ->
-    io:format(standard_io, "D: " ++ Msg, Data);
+    io:format(standard_io, "D: " ++ Msg ++ "~n", Data);
 log_tty(?LVL_INFO, Msg, Data) ->
-    io:format(standard_io, "I: " ++ Msg, Data);
+    io:format(standard_io, "I: " ++ Msg ++ "~n", Data);
 log_tty(?LVL_WARN, Msg, Data) ->
-    io:format(standard_error, "W: " ++ Msg, Data);
+    io:format(standard_error, "W: " ++ Msg ++ "~n", Data);
 log_tty(?LVL_ERROR, Msg, Data) ->
-    io:format(standard_error, "E: " ++ Msg, Data).
+    io:format(standard_error, "E: " ++ Msg ++ "~n", Data).
 
 
 %log_rebar(?LVL_DEBUG, Msg, Data) ->
