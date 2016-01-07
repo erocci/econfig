@@ -11,7 +11,6 @@
 -include("econfig_log.hrl").
 
 -export([new/0,
-		 new/1,
 		 load/2,
 		 lookup/2,
 		 set/3,
@@ -34,20 +33,6 @@
 -spec new() -> t().
 new() ->
     #state{tid=ets:new(config, [])}.
-
--spec new(Econfig :: filename:file()) -> t().
-new(Econfig) ->
-    S = new(),
-    case application:get_env(econfig, overwrite, false) of
-		true ->
-			S;
-		false ->
-			case load(Econfig, S) of
-				{error, enoent} -> S;
-				{error, Err} -> throw(Err);
-				#state{} = S1 -> S1
-			end
-    end.
 
 -spec load(filename:file(), t()) -> t() | {error, term()}.
 load(Filename, S) ->

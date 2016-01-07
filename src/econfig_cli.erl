@@ -58,6 +58,7 @@ start(Cmd, Models, Opts) ->
     application:set_env(econfig, caller,    escript),
     application:set_env(econfig, frontend,  frontend(proplists:get_value(frontend, Opts))),
     application:set_env(econfig, log,       proplists:get_value(verbose, Opts, 0)),
+    application:set_env(econfig, overwrite, proplists:get_value(overwrite, Opts, false)),
     {ok, _} = application:ensure_all_started(econfig),
     Cwd = case proplists:get_value(cwd, Opts) of
 			  undefined -> {ok, Dir} = file:get_cwd(), Dir;
@@ -65,7 +66,15 @@ start(Cmd, Models, Opts) ->
 		  end,
     ?debug("Set current working dir: ~s", [Cwd]),
     S = econfig_state:new(Cwd),
-    case econfig_state:load(S) of
+	case proplists:get_value(overwrite, Opts, false) of
+		false ->
+			init_config(Cmd, Models, S);
+		true ->
+			init_models(Cmd, Models, S)
+	end.
+
+init_config(Cmd, Models, S) ->
+	case econfig_state:load(S) of
 		{error, _} = Err ->
 			Err;
 		S2 ->
