@@ -6,6 +6,8 @@ It takes as input a list of files describing each component
 variability model and build a graph of dependancies from it for
 getting configuration values.
 
+[![Build Status](https://travis-ci.org/erocci/econfig.svg)](https://travis-ci.org/erocci/econfig)
+
 # Prerequisites
 
 Get erlang/OTP platform from
