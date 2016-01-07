@@ -19,7 +19,7 @@
 		io_lib:format("(~s)", [string:join([ atom_to_list(F) || F <- ?frontends], "|")])).
 
 -define(argspec, [
-				  {overwrite, $o, "overwrite", {boolean, false}, "Overwrite existing config"},
+				  {overwrite, $w, "overwrite", {boolean, false}, "Overwrite existing config"},
 				  {frontend,  $f, "frontend",  {string, "tty"},  "User frontend " ++ ?frontends_str},
 				  {cwd,       $C, "dir",       string,           "Change working directory"},
 				  {verbose,   $v, "verbose",   integer,          "Verbose (multiple times increase verbosity)"},
