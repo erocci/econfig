@@ -30,27 +30,34 @@
 				 ]).
 
 run(Args) ->
-    case getopt:parse(?argspec, Args) of
-		{ok, {Opts, [Cmd | CmdOpts]}} ->
-			Mod = cmd_mod(Cmd),
-			case proplists:get_bool(help, Opts) of
-				true ->
-					usage(),
-					erlang:halt(0);
-				false ->
-					try start(Mod, Opts, CmdOpts) of
-						ok ->
-							erlang:halt(0);
-						{error, Err} ->
-							handle_error(Err)
-					catch _:Err ->
-							handle_error(Err)
-					end
-			end;
-		_ ->
+	case split_args(Args) of
+		{_, undefined, _} ->
 			usage(),
-			erlang:halt(1)
-    end.
+			erlang:halt(0);
+		{_, econfig_cmd_help, CmdArgs} ->
+			econfig_cmd_help:run(undefined, CmdArgs);
+		{GlobalArgs, CmdMod, CmdArgs} ->
+			case getopt:parse(?argspec, GlobalArgs) of
+				{ok, {Opts, []}} ->
+					case proplists:get_bool(help, Opts) of
+						true ->
+							usage(),
+							erlang:halt(0);
+						false ->
+							try start(CmdMod, Opts, CmdArgs) of
+								ok ->
+									erlang:halt(0);
+								{error, Err} ->
+									handle_error(Err)
+							catch _:Err ->
+									handle_error(Err)
+							end
+					end;
+				_ ->
+					usage(),
+					erlang:halt(1)
+			end
+	end.
 
 
 %%%
@@ -74,8 +81,8 @@ start(Mod, Opts, CmdArgs) ->
 
 cmd_mod(Name) -> cmd_mod(Name, ?commands).
 
-cmd_mod(Name, []) -> 
-	throw({invalid_command, Name});
+cmd_mod(_Name, []) -> 
+	undefined;
 cmd_mod(Name, [Mod | Tail]) ->
 	case atom_to_list(cmd_attr(cmd_name, Mod)) of
 		Name -> Mod;			
@@ -100,6 +107,18 @@ cmd_attr(Key, Mod) ->
 		[Attr|_] when is_atom(Attr) -> Attr;
 		Attr when is_list(Attr) -> Attr;
 		_ -> throw(io_lib:format("Invalid command attribute: ~s", [Key]))
+	end.
+
+split_args(Args) -> split_args(Args, []).
+
+split_args([], _Acc) ->
+	{[], undefined, []};
+split_args([ Arg | Tail ], Acc) ->
+	case cmd_mod(Arg) of
+		undefined ->
+			split_args(Tail, [Arg | Acc]);
+		Mod ->
+			{lists:reverse(Acc), Mod, Tail}
 	end.
 
 handle_error({model_list_parse_error, Str}) ->

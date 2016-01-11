@@ -21,7 +21,12 @@
 run(_, []) ->
 	usage();
 run(_, [Cmd]) ->
-	(econfig_cli:cmd_mod(Cmd)):usage().
+	case econfig_cli:cmd_mod(Cmd) of
+		undefined ->
+			?error("Invalid command: ~s", [Cmd]);
+		Mod ->
+			Mod:usage()
+	end.
 
 usage() ->
 	Commands = lists:filter(fun ("help") -> false; (_) -> true end, econfig_cli:cmd_names()),
