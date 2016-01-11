@@ -13,7 +13,7 @@ dep_bbmustache = git https://github.com/soranoba/bbmustache.git v1.0.4
 
 ESCRIPT_EMU_ARGS = -smp auto -pa . -noshell -sasl errlog_type error -escript main econfig
 
-COMPILE_FIRST = econfig_frontend
+COMPILE_FIRST = econfig_frontend econfig_cmd
 
 VSN = $(shell $(CURDIR)/version.sh $(VERSION))
 

@@ -10,11 +10,14 @@
 -include("econfig.hrl").
 -include("econfig_log.hrl").
 
--export([run/1]).
+-export([run/1,
+		 handle_error/1]).
 
--type econfig_cmd() :: configure | print.
+-type econfig_cmd() :: econfig_cmd_configure 
+					 | econfig_cmd_print.
 -type econfig_opts() :: {frontend, tty}.
 
+-define(commands, [econfig_cmd_configure, econfig_cmd_print]).
 -define(frontends_str, 
 		io_lib:format("(~s)", [string:join([ atom_to_list(F) || F <- ?frontends], "|")])).
 
@@ -29,12 +32,13 @@
 run(Args) ->
     case getopt:parse(?argspec, Args) of
 		{ok, {Opts, [Cmd | Dirs]}} ->
+			Mod = cmd_mod(Cmd),
 			case proplists:get_bool(help, Opts) of
 				true ->
 					usage(),
 					erlang:halt(0);
 				false ->
-					try start(cmd(Cmd), Dirs, Opts) of
+					try start(Mod, Dirs, Opts) of
 						ok ->
 							erlang:halt(0);
 						{error, Err} ->
@@ -68,29 +72,29 @@ start(Cmd, Models, Opts) ->
     S = econfig_state:new(Cwd),
 	case proplists:get_value(overwrite, Opts, false) of
 		false ->
-			init_config(Cmd, Models, S);
+			init_config(Cmd, Models, S, Opts);
 		true ->
-			init_models(Cmd, Models, S)
+			init_models(Cmd, Models, S, Opts)
 	end.
 
-init_config(Cmd, Models, S) ->
+init_config(Cmd, Models, S, Opts) ->
 	case econfig_state:load(S) of
 		{error, _} = Err ->
 			Err;
 		S2 ->
-			init_models(Cmd, Models, S2)
+			init_models(Cmd, Models, S2, Opts)
     end.
 
-init_models(Cmd, [], State) ->
+init_models(Mod, [], State, Opts) ->
     ?debug("No model specified: load from current dir", []),
     Cwd = econfig_state:basedir(State),
-    init_models(Cmd, [Cwd], State);
-init_models(Cmd, ModelsDef, State) ->
+    init_models(Mod, [Cwd], State, Opts);
+init_models(Mod, ModelsDef, State, Opts) ->
     case econfig_state:parse_models(parse_models_list(ModelsDef, []), State) of
 		{error, _} = Err ->
 			Err;
 		S2 ->
-			command(Cmd, S2)
+			Mod:run(S2, Opts)
     end.
 
 parse_models_list([], Acc) ->
@@ -106,21 +110,15 @@ parse_models_list([ Str | Tail], Acc) ->
 			throw({model_list_parse_error, Str})
     end.
 
-command(print, State) ->
-    econfig_config:pp(econfig_state:config(State)),
-    ok;
+cmd_mod(Name) -> cmd_mod(Name, ?commands).
 
-command(configure, State) ->
-    case econfig_state:configure(State) of
-		{error, Err} ->
-			handle_error(Err);
-		S2 ->
-			econfig_state:store(S2)
-    end.
-
-cmd("configure") -> configure;
-cmd("print") -> print;
-cmd(Cmd) -> throw({invalid_command, Cmd}).
+cmd_mod(Name, []) -> 
+	throw({invalid_command, Name});
+cmd_mod(Name, [Mod | Tail]) ->
+	case cmd_name(Mod) of
+		Name -> Mod;			
+		_ -> cmd_mod(Name, Tail)
+	end.
 
 frontend(Frontend) -> 
     case lists:member(Frontend, [ atom_to_list(F) || F <- ?frontends]) of
@@ -131,14 +129,21 @@ frontend(Frontend) ->
     end.
 
 usage() ->
-    getopt:usage(?argspec, atom_to_list(?MODULE), 
-				 "command [<dir ...>]",
-				 [{"command", "configure | print"},
-				  {"<models ...>", "Space separated list of models. "
-				   "Form is 'ns:/path/to/dir' or '/path/to/dir'. In case 'ns' is ommitted, "
-				   "default to basename(/path/to/dir) [default: <cwd>]"}]),
+    getopt:usage(?argspec, "econfig", 
+				 "command <command_opts>",
+				 [{"command", string:join(cmd_names(), " | ")}]),
     ok.
 
+cmd_names() ->
+	lists:map(fun (Mod) -> cmd_name(Mod) end, ?commands).
+
+cmd_name(Mod) ->
+	case proplists:get_value(cmd_name, Mod:module_info(attributes)) of
+		undefined -> atom_to_list(Mod);
+		[] -> atom_to_list(Mod);
+		[Name|_] when is_atom(Name) -> atom_to_list(Name);
+		[Name|_] when is_list(Name) -> Name
+	end.	
 
 handle_error({model_list_parse_error, Str}) ->
     io:format("E: Invalid model list definition: ~s~n", [Str]),

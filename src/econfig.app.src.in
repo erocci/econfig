@@ -13,6 +13,9 @@
 	     econfig_state,
 	     econfig_ui_defconfig,
 	     econfig_ui_tty,
+		 econfig_cmd,
+		 econfig_cmd_configure,
+		 econfig_cmd_print,
 	     econfig_utils
 	    ]},
   {registered, []},
