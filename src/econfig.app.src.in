@@ -4,29 +4,28 @@
   {description, "econfig is a config management system"},
   {vsn, "@VSN@"},
   {modules, [
-	     econfig,
-	     econfig_cli,
-	     econfig_config,
-	     econfig_frontend,
-	     econfig_log,
-	     econfig_model,
-	     econfig_state,
-	     econfig_ui_defconfig,
-	     econfig_ui_tty,
-		 econfig_cmd,
-		 econfig_cmd_configure,
-		 econfig_cmd_print,
-	     econfig_utils
-	    ]},
+			 econfig,
+			 econfig_cli,
+			 econfig_config,
+			 econfig_frontend,
+			 econfig_log,
+			 econfig_model,
+			 econfig_state,
+			 econfig_ui_defconfig,
+			 econfig_ui_tty,
+			 econfig_cmd,
+			 econfig_cmd_configure,
+			 econfig_cmd_print,
+			 econfig_utils
+			]},
   {registered, []},
   {applications, [kernel
-		 ,stdlib
-		 ,getopt
-		 ]},
+				 ,stdlib
+				 ,getopt
+				 ]},
   {env, [
-	 {frontend, tty}         % default frontend: tty
-	,{log, 0}                % default log level: INFO
-	]},
+		 {log, 0}                % default log level: INFO
+		]},
   {contributors, ["Jean Parpaillon"]},
   {licenses, ["Apache 2.0"]},
   {links, [{"Github", "https://github.com/erocci/econfig"}]}
