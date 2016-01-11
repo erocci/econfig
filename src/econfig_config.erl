@@ -15,8 +15,8 @@
 		 lookup/2,
 		 set/3,
 		 store/2,
+		 compile/2,
 		 render/2,
-		 render/3,
 		 render/4,
 		 hash/1,
 		 hash/2,
@@ -59,19 +59,20 @@ store(Filename, #state{}=S) ->
 			Err
     end.
 
+-spec compile(In :: iodata(), Config :: t()) -> iodata() | {error, econfig_err()}.
+compile(In, Config) ->
+	Tmpl = bbmustache:parse_binary(In),
+	Data2 = hash(undefined, #{}, Config),
+	bbmustache:compile(Tmpl, Data2).
+
+
 -spec render(Filename :: file:name_all(), Config :: t()) -> 
-					{ok, iodata()} | {error, econfig_err()}.
+					iodata() | {error, econfig_err()}.
 render(Filename, Config) ->
 	render(undefined, Filename, #{}, Config).
 
--spec render(LocalNS :: atom(), Filename :: file:name_all(), Config :: t()) -> 
-					{ok, iodata()} | {error, econfig_err()}.
-render(LocalNS, Filename, Config) ->
-    render(LocalNS, Filename, #{}, Config).
-
-
 -spec render(LocalNS :: atom(), Filename :: file:name_all(), Data :: #{}, Config :: t()) -> 
-					ok | {error, econfig_err()}.
+					iodata() | {error, econfig_err()}.
 render(LocalNS, Filename, Data, #state{}=Config) ->
     case filelib:is_regular(Filename) of
 		true ->

@@ -14,7 +14,11 @@ conf_verbose_2 = set -x;
 conf_verbose = $(conf_verbose_$(V))
 
 define econfig_value
-$(shell $(ECONFIG) print -o value $(1))
+$(shell $(ECONFIG) $(ECONFIG_GLOBAL_OPTS) print -o value $(1))
+endef
+
+define econfig_compile
+$(shell $(ECONFIG) $(ECONFIG_GLOBAL_OPTS) compile $(1))
 endef
 
 econfig: Econfig

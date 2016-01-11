@@ -22,6 +22,7 @@
 -define(commands, [econfig_cmd_configure, 
 				   econfig_cmd_print,
 				   econfig_cmd_render,
+				   econfig_cmd_compile,
 				   econfig_cmd_help]).
 
 -define(argspec, [
