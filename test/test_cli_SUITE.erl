@@ -41,14 +41,14 @@ end_per_group(_, _Config) ->
     ok.
 
 test_base(Config) ->
-    Args = ?config(args, Config) ++ ["-f", "defconfig", "configure"],
+    Args = ?config(args, Config) ++ ["configure", "-f", "defconfig"],
     run(Args, Config),
     CfgFile = filename:join([?config(data_dir, Config), ".econfig"]),
     ?assertMatch({ok, [{"test_cli_SUITE_data.config1", true}]}, file:consult(CfgFile)),
     ok = file:delete(CfgFile).
 
 test_ns(Config) ->
-    Args = ?config(args, Config) ++ ["-f", "defconfig", "configure", "app:."],
+    Args = ?config(args, Config) ++ ["configure", "-f", "defconfig", "app:."],
     run(Args, Config),
     CfgFile = filename:join([?config(data_dir, Config), ".econfig"]),
     ?assertMatch({ok, [{"app.config1", true}]}, file:consult(CfgFile)),
