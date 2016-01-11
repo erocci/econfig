@@ -53,7 +53,7 @@ store(Filename, #state{}=S) ->
     ?debug("Writing config to ~s", [Filename]),
     case file:write_file(Filename, [ io_lib:format("~tp.~n", [Term]) || Term <- to_list(S) ]) of
 		ok ->
-			?info("Config written in ~s", [Filename]),
+			?debug("Config written in ~s", [Filename]),
 			ok;
 		{error, _} = Err ->
 			Err
