@@ -15,6 +15,7 @@
 		 lookup/2,
 		 set/3,
 		 store/2,
+		 render/2,
 		 render/3,
 		 render/4,
 		 hash/1,
@@ -58,21 +59,27 @@ store(Filename, #state{}=S) ->
 			Err
     end.
 
--spec render(LocalNS :: atom(), Filename :: file:name_all(), Config :: t()) -> ok | {error, econfig_err()}.
-render(LocalNS, Target, Config) ->
-    render(LocalNS, Target, #{}, Config).
+-spec render(Filename :: file:name_all(), Config :: t()) -> 
+					{ok, iodata()} | {error, econfig_err()}.
+render(Filename, Config) ->
+	render(undefined, Filename, #{}, Config).
+
+-spec render(LocalNS :: atom(), Filename :: file:name_all(), Config :: t()) -> 
+					{ok, iodata()} | {error, econfig_err()}.
+render(LocalNS, Filename, Config) ->
+    render(LocalNS, Filename, #{}, Config).
 
 
--spec render(LocalNS :: atom(), Filename :: file:name_all(), Data :: #{}, Config :: t()) -> ok | {error, econfig_err()}.
-render(LocalNS, Target, Data, #state{}=Config) ->
-    TmplName = Target ++ ".in",
-    case filelib:is_regular(TmplName) of
+-spec render(LocalNS :: atom(), Filename :: file:name_all(), Data :: #{}, Config :: t()) -> 
+					ok | {error, econfig_err()}.
+render(LocalNS, Filename, Data, #state{}=Config) ->
+    case filelib:is_regular(Filename) of
 		true ->
-			Tmpl = bbmustache:parse_file(TmplName),
+			Tmpl = bbmustache:parse_file(Filename),
 			Data2 = hash(LocalNS, Data, Config),
-			file:write_file(Target, bbmustache:compile(Tmpl, Data2));
+			bbmustache:compile(Tmpl, Data2);
 		false ->
-			throw({missing_source, TmplName})
+			throw({invalid_filename, Filename})
     end.
 
 

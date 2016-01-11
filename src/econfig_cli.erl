@@ -17,10 +17,11 @@
 -export([cmd_names/0,
 		 cmd_mod/1]).
 
--type econfig_opts() :: {frontend, tty}.
+-type econfig_opts() :: term().
 
 -define(commands, [econfig_cmd_configure, 
-				   econfig_cmd_print, 
+				   econfig_cmd_print,
+				   econfig_cmd_render,
 				   econfig_cmd_help]).
 
 -define(argspec, [
