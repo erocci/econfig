@@ -24,7 +24,7 @@ Default Makefile target build the `econfig` script.
 # Usage
 
 ```
-$ econfig configure app1.econfig app2.econfig ...
+$ econfig help ...
 ```
 
 # Options
