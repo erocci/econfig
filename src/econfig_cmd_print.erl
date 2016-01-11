@@ -18,7 +18,7 @@
 -export([run/2,
 		 usage/0]).
 
--define(output, [erlang, sh]).
+-define(output, [erlang, sh, value]).
 -define(output_str, 
 		io_lib:format("(~s)", [string:join([ atom_to_list(F) || F <- ?output], "|")])).
 -define(argspec, [
@@ -69,6 +69,11 @@ pp(sh, Config) ->
 						  io:format("~s=~s~n", [render_sh_key(Key), render_sh_val(Val)])
 				  end, Config);
 
+pp(value, Config) ->
+	lists:foreach(fun ({_Key, Val}) ->
+						  io:format("~s~n", [render_value(Val)])
+				  end, Config);
+
 pp(Format, _) ->
 	?error("Invalid output format: ~s", [Format]),
 	usage(),
@@ -81,3 +86,11 @@ render_sh_val(false) -> "0";
 render_sh_val(V) when is_atom(V) -> atom_to_list(V);
 render_sh_val(V) when is_integer(V) -> integer_to_list(V);
 render_sh_val(V) -> io_lib:format("~p", [V]).
+
+
+render_value(true)  -> "1";
+render_value(false) -> "0";
+render_value(V) when is_atom(V) -> atom_to_list(V);
+render_value(V) when is_integer(V) -> integer_to_list(V);
+render_value(V) when is_list(V) -> V;
+render_value(V) -> io_lib:format("~p", [V]).

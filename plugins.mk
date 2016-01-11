@@ -13,9 +13,11 @@ conf_verbose_0 = @echo " CONFIG "$(PROJECT);
 conf_verbose_2 = set -x;
 conf_verbose = $(conf_verbose_$(V))
 
-all:: configure
+define econfig_value
+$(shell $(ECONFIG) print -o value $(1))
+endef
 
-configure: Econfig
+econfig: Econfig
 	$(conf_verbose) $(ECONFIG) $(ECONFIG_GLOBAL_OPTS) configure $(ECONFIG_CONFIGURE_OPTS) $(PROJECT):.
 
-.PHONY: configure
+.PHONY: econfig
