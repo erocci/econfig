@@ -10,6 +10,7 @@
 -behaviour(econfig_cmd).
 
 -cmd_name(print).
+-cmd_desc("Print current configuration").
 
 %% econfig_cmd behaviour API
 -export([run/2]).

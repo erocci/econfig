@@ -13,11 +13,14 @@
 -export([run/1,
 		 handle_error/1]).
 
--type econfig_cmd() :: econfig_cmd_configure 
-					 | econfig_cmd_print.
+%% Exported for econfig_cmd_help
+-export([cmd_names/0]).
+
 -type econfig_opts() :: {frontend, tty}.
 
--define(commands, [econfig_cmd_configure, econfig_cmd_print]).
+-define(commands, [econfig_cmd_configure, 
+				   econfig_cmd_print, 
+				   econfig_cmd_help]).
 -define(frontends_str, 
 		io_lib:format("(~s)", [string:join([ atom_to_list(F) || F <- ?frontends], "|")])).
 
@@ -56,7 +59,9 @@ run(Args) ->
 %%%
 %%% Priv
 %%%
--spec start(Cmd :: econfig_cmd(), Models :: [string()], Opts :: [econfig_opts()]) -> ok.
+-spec start(Cmd :: atom(), Models :: [string()], Opts :: [econfig_opts()]) -> ok.
+start(help, _, Opts) ->
+	econfig_cmd_help:run(undefined, Opts);
 start(Cmd, Models, Opts) ->
     application:load(econfig),
     application:set_env(econfig, caller,    escript),
@@ -115,7 +120,7 @@ cmd_mod(Name) -> cmd_mod(Name, ?commands).
 cmd_mod(Name, []) -> 
 	throw({invalid_command, Name});
 cmd_mod(Name, [Mod | Tail]) ->
-	case cmd_name(Mod) of
+	case atom_to_list(cmd_attr(cmd_name, Mod)) of
 		Name -> Mod;			
 		_ -> cmd_mod(Name, Tail)
 	end.
@@ -130,20 +135,23 @@ frontend(Frontend) ->
 
 usage() ->
     getopt:usage(?argspec, "econfig", 
-				 "command <command_opts>",
-				 [{"command", string:join(cmd_names(), " | ")}]),
+				 "command <command_opts>", []),
+	io:format("  ~-17s" ++ string:join(cmd_names(), " | ") ++ "~n", ["Commands:"]),
+	lists:foreach(fun (Mod) ->
+						  io:format("  * ~-15s", [atom_to_list(cmd_attr(cmd_name, Mod))]),
+						  io:format("~s~n", [cmd_attr(cmd_desc, Mod)])
+				  end, ?commands),
     ok.
 
 cmd_names() ->
-	lists:map(fun (Mod) -> cmd_name(Mod) end, ?commands).
+	lists:map(fun (Mod) -> atom_to_list(cmd_attr(cmd_name, Mod)) end, ?commands).
 
-cmd_name(Mod) ->
-	case proplists:get_value(cmd_name, Mod:module_info(attributes)) of
-		undefined -> atom_to_list(Mod);
-		[] -> atom_to_list(Mod);
-		[Name|_] when is_atom(Name) -> atom_to_list(Name);
-		[Name|_] when is_list(Name) -> Name
-	end.	
+cmd_attr(Key, Mod) ->
+	case proplists:get_value(Key, Mod:module_info(attributes)) of
+		[Attr|_] when is_atom(Attr) -> Attr;
+		Attr when is_list(Attr) -> Attr;
+		_ -> throw(io_lib:format("Invalid command attribute: ~s", [Key]))
+	end.
 
 handle_error({model_list_parse_error, Str}) ->
     io:format("E: Invalid model list definition: ~s~n", [Str]),
@@ -182,9 +190,14 @@ handle_error({missing_source, F}) ->
     erlang:halt(1);
 
 handle_error(Err) ->
+	handle_error_gen(Err).
+
+handle_error_gen(Err) when is_list(Err) ->
     case econfig_log:is_debug() of
 		true -> erlang:display(erlang:get_stacktrace());
 		false -> ok
     end,
-    io:format("E: internal error (~p)~n", [Err]),
-    erlang:halt(1).
+    io:format("E: internal error (~s)~n", [Err]),
+    erlang:halt(1);
+handle_error_gen(Err) ->
+	handle_error_gen(io_lib:format("~p", [Err])).

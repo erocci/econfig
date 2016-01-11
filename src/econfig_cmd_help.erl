@@ -5,20 +5,19 @@
 %%% @end
 %%% Created : 11 Jan 2016 by Jean Parpaillon <jean.parpaillon@free.fr>
 
--module(econfig_cmd_configure).
+-module(econfig_cmd_help).
 
 -behaviour(econfig_cmd).
+
+-cmd_name(help).
+-cmd_desc("Describe a command and its options").
 
 %% econfig_cmd behaviour API
 -export([run/2]).
 
--cmd_name(configure).
--cmd_desc("Configure an application").
-
-run(State, _Opts) ->
-    case econfig_state:configure(State) of
-		{error, Err} ->
-			econfig_cli:handle_error(Err);
-		S2 ->
-			econfig_state:store(S2)
-    end.
+run(_State, _Opts) ->
+	io:format("Usage: econfig help <"
+			  ++ string:join(econfig_cli:cmd_names(), " | ")
+			  ++ ">~n",
+			 []),
+    ok.
