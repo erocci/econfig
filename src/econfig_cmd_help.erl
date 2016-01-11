@@ -9,15 +9,20 @@
 
 -behaviour(econfig_cmd).
 
+-include("econfig_log.hrl").
+
 -cmd_name(help).
 -cmd_desc("Describe a command and its options").
 
 %% econfig_cmd behaviour API
--export([run/2]).
+-export([run/2,
+		 usage/0]).
 
-run(_State, _Opts) ->
-	io:format("Usage: econfig help <"
-			  ++ string:join(econfig_cli:cmd_names(), " | ")
-			  ++ ">~n",
-			 []),
-    ok.
+run(_, []) ->
+	usage();
+run(_, [Cmd]) ->
+	(econfig_cli:cmd_mod(Cmd)):usage().
+
+usage() ->
+	Commands = lists:filter(fun ("help") -> false; (_) -> true end, econfig_cli:cmd_names()),
+	econfig_cmd:usage(help, [], "<" ++ string:join(Commands, " | ") ++ ">", []).

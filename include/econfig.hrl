@@ -46,15 +46,13 @@
 -type econfig_value() :: boolean() | integer() | string() | atom().
 
 -type econfig_err()   :: {invalid_filename, string()}
-		       | {cycle, term()}
-		       | {badentry, term()}
-		       | {invalid_command, string()}
-		       | {invalid_input, term()}
-		       | {invalid_type, term()}
-		       | {invalid_config, term()}
-		       | {missing_source, term()}
-		       | eacces.
-
--define(frontends, [defconfig,tty]).
+					   | {cycle, term()}
+					   | {badentry, term()}
+					   | {invalid_command, string()}
+					   | {invalid_input, term()}
+					   | {invalid_type, term()}
+					   | {invalid_config, term()}
+					   | {missing_source, term()}
+					   | eacces.
 
 -endif.

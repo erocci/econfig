@@ -11,4 +11,15 @@
 
 -module(econfig_cmd).
 
+%% Utils for commands
+-export([usage/2,
+		 usage/4]).
+
+-callback usage() -> ok.
 -callback run(State :: econfig_state:t(), Opts :: [proplists:property()]) -> ok.
+
+usage(Cmd, Spec) ->
+	getopt:usage(Spec, "econfig " ++ atom_to_list(Cmd)).
+
+usage(Cmd, Spec, Help, Lines) ->
+	getopt:usage(Spec, "econfig " ++ atom_to_list(Cmd), Help, Lines).

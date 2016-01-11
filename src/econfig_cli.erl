@@ -14,19 +14,16 @@
 		 handle_error/1]).
 
 %% Exported for econfig_cmd_help
--export([cmd_names/0]).
+-export([cmd_names/0,
+		 cmd_mod/1]).
 
 -type econfig_opts() :: {frontend, tty}.
 
 -define(commands, [econfig_cmd_configure, 
 				   econfig_cmd_print, 
 				   econfig_cmd_help]).
--define(frontends_str, 
-		io_lib:format("(~s)", [string:join([ atom_to_list(F) || F <- ?frontends], "|")])).
 
 -define(argspec, [
-				  {overwrite, $w, "overwrite", {boolean, false}, "Overwrite existing config"},
-				  {frontend,  $f, "frontend",  {string, "tty"},  "User frontend " ++ ?frontends_str},
 				  {cwd,       $C, "dir",       string,           "Change working directory"},
 				  {verbose,   $v, "verbose",   integer,          "Verbose (multiple times increase verbosity)"},
 				  {help,      $h, "help",      undefined,        "Show this help"}
@@ -34,14 +31,14 @@
 
 run(Args) ->
     case getopt:parse(?argspec, Args) of
-		{ok, {Opts, [Cmd | Dirs]}} ->
+		{ok, {Opts, [Cmd | CmdOpts]}} ->
 			Mod = cmd_mod(Cmd),
 			case proplists:get_bool(help, Opts) of
 				true ->
 					usage(),
 					erlang:halt(0);
 				false ->
-					try start(Mod, Dirs, Opts) of
+					try start(Mod, Opts, CmdOpts) of
 						ok ->
 							erlang:halt(0);
 						{error, Err} ->
@@ -59,61 +56,21 @@ run(Args) ->
 %%%
 %%% Priv
 %%%
--spec start(Cmd :: atom(), Models :: [string()], Opts :: [econfig_opts()]) -> ok.
-start(help, _, Opts) ->
-	econfig_cmd_help:run(undefined, Opts);
-start(Cmd, Models, Opts) ->
+-spec start(Cmd :: atom(), Opts :: [econfig_opts()], CmdOpts :: [term()]) -> ok.
+start(econfig_cmd_help, _Opts, CmdArgs) ->
+	econfig_cmd_help:run(undefined, CmdArgs);
+start(Mod, Opts, CmdArgs) ->
     application:load(econfig),
     application:set_env(econfig, caller,    escript),
-    application:set_env(econfig, frontend,  frontend(proplists:get_value(frontend, Opts))),
     application:set_env(econfig, log,       proplists:get_value(verbose, Opts, 0)),
-    application:set_env(econfig, overwrite, proplists:get_value(overwrite, Opts, false)),
     {ok, _} = application:ensure_all_started(econfig),
     Cwd = case proplists:get_value(cwd, Opts) of
 			  undefined -> {ok, Dir} = file:get_cwd(), Dir;
 			  Dir -> econfig_utils:canonical(filename:absname(Dir))
 		  end,
     ?debug("Set current working dir: ~s", [Cwd]),
-    S = econfig_state:new(Cwd),
-	case proplists:get_value(overwrite, Opts, false) of
-		false ->
-			init_config(Cmd, Models, S, Opts);
-		true ->
-			init_models(Cmd, Models, S, Opts)
-	end.
-
-init_config(Cmd, Models, S, Opts) ->
-	case econfig_state:load(S) of
-		{error, _} = Err ->
-			Err;
-		S2 ->
-			init_models(Cmd, Models, S2, Opts)
-    end.
-
-init_models(Mod, [], State, Opts) ->
-    ?debug("No model specified: load from current dir", []),
-    Cwd = econfig_state:basedir(State),
-    init_models(Mod, [Cwd], State, Opts);
-init_models(Mod, ModelsDef, State, Opts) ->
-    case econfig_state:parse_models(parse_models_list(ModelsDef, []), State) of
-		{error, _} = Err ->
-			Err;
-		S2 ->
-			Mod:run(S2, Opts)
-    end.
-
-parse_models_list([], Acc) ->
-    lists:reverse(Acc);
-parse_models_list([ Str | Tail], Acc) ->
-    case string:tokens(Str, ":") of
-		[Dir] ->
-			App = filename:basename(Dir),
-			parse_models_list(Tail, [{list_to_atom(App), Dir} | Acc]);
-		[AppStr, Dir] ->
-			parse_models_list(Tail, [{list_to_atom(AppStr), Dir} | Acc]);
-		_ ->
-			throw({model_list_parse_error, Str})
-    end.
+    State = econfig_state:new(Cwd),
+	Mod:run(State, CmdArgs).
 
 cmd_mod(Name) -> cmd_mod(Name, ?commands).
 
@@ -124,14 +81,6 @@ cmd_mod(Name, [Mod | Tail]) ->
 		Name -> Mod;			
 		_ -> cmd_mod(Name, Tail)
 	end.
-
-frontend(Frontend) -> 
-    case lists:member(Frontend, [ atom_to_list(F) || F <- ?frontends]) of
-		true ->
-			list_to_atom(Frontend);
-		false ->
-			throw({invalid_frontend, Frontend})
-    end.
 
 usage() ->
     getopt:usage(?argspec, "econfig", 

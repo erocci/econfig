@@ -17,7 +17,7 @@
 		 models/2,
 		 store/1,
 		 parse_models/2,
-		 configure/1]).
+		 configure/2]).
 
 -record(state, {
 		  basedir  :: filename:file(),
@@ -87,9 +87,9 @@ parse_models(Models, S) ->
     ConfigModel = compile(AppEntries),
     S#state{model=ConfigModel}.
 
--spec configure(t()) -> t() | {error, term()}.
-configure(#state{config=C, model=Model}=S) ->
-    F = econfig_frontend:new(Model),
+-spec configure(Frontend :: atom(), t()) -> t() | {error, term()}.
+configure(Frontend, #state{config=C, model=Model}=S) ->
+    F = econfig_frontend:new(Frontend, Model),
     case econfig_frontend:run(C, F) of
 		{ok, C1, F1} ->
 			S#state{config=C1, frontend=F1};

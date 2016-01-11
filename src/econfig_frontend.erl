@@ -10,17 +10,15 @@
 -include("econfig.hrl").
 -include("econfig_log.hrl").
 
-												% External API
--export([new/1,
+%% External API
+-export([new/2,
 		 run/2]).
 
 -type ui() :: term().
 
--record state, {
-			  mod      :: atom(),
-		  ref      :: term(),
-		  model    :: econfig_model:t()
-		 }.
+-record(state, {mod      :: atom(),
+				ref      :: term(),
+				model    :: econfig_model:t()}).
 -type t() :: #state{}.
 -export_type([t/0, ui/0]).
 
@@ -30,9 +28,9 @@
 -callback terminate(Ref :: ui()) -> ok.
 -callback format_error(Err :: term()) -> ok.
 
--spec new(Model :: econfig_model:t()) -> {ok, t()} | {error, econfig_err()}.
-new(Model) ->
-    Mod = impl(),
+-spec new(Frontend :: atom(), Model :: econfig_model:t()) -> {ok, t()} | {error, econfig_err()}.
+new(Frontend, Model) ->
+    Mod = impl(Frontend),
     case Mod:start_link(Model, []) of
 		{ok, Ref} ->
 			#state{mod=Mod, ref=Ref, model=Model};
@@ -57,19 +55,14 @@ run(Config, #state{model=Model, mod=Mod, ref=Ref}=F) ->
 %%%
 %%% Priv
 %%%
-impl() ->
-    case application:get_env(econfig, frontend, tty) of
-		I when is_atom(I) ->
-			Mod = list_to_atom("econfig_ui_" ++ atom_to_list(I)),
-			case is_module(Mod) of
-				true ->
-					Mod;
-				false ->
-					throw({invalid_frontend, Mod})
-			end;
-		Else ->
-			throw({invalid_frontend, Else})
-    end.
+impl(Frontend) ->
+	Mod = list_to_atom("econfig_ui_" ++ atom_to_list(Frontend)),
+	case is_module(Mod) of
+		true ->
+			Mod;
+		false ->
+			throw({invalid_frontend, Mod})
+	end.
 
 is_module(Mod) when is_atom(Mod) ->
     try Mod:module_info() of
