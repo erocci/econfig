@@ -12,32 +12,32 @@
 
 -type key() :: {atom(), atom()}.
 -record(entry, {key                 :: key(),
-		desc                :: string(),
-		type                :: econfig_entry_type(),
-		default             :: term(),
-		select   = []       :: [econfig_dep:t()],
-		depends  = []       :: [econfig_dep:t()],
-		menu     = []       :: [econfig_dep:t()],
-		choice   = []       :: [econfig_dep:t()],
-		requires = []       :: [econfig_dep:t()],
-		excludes = []       :: [econfig_dep:t()],
-		opts                :: [econfig_entry_opt()]}).
+				desc                :: string(),
+				type                :: econfig_entry_type(),
+				default             :: term(),
+				select   = []       :: [econfig_dep:t()],
+				depends  = []       :: [econfig_dep:t()],
+				menu     = []       :: [econfig_dep:t()],
+				choice   = []       :: [econfig_dep:t()],
+				requires = []       :: [econfig_dep:t()],
+				excludes = []       :: [econfig_dep:t()],
+				opts                :: [econfig_entry_opt()]}).
 -type t() :: #entry{}.
 
 -export_type([t/0]).
 
 -export([new/5,
-	 new/2,
-	 key/1,
-	 desc/1,
-	 type/1,
-	 default/1,
-	 menu/1,
-	 deps/2,
-	 eval/2]).
+		 new/2,
+		 key/1,
+		 desc/1,
+		 type/1,
+		 default/1,
+		 menu/1,
+		 deps/2,
+		 eval/2]).
 
 -spec new(Key :: key(), Desc :: string(), Type :: econfig_entry_type(), 
-	  Dft :: term(), Opts :: [econfig_entry_opt()]) -> t().
+		  Dft :: term(), Opts :: [econfig_entry_opt()]) -> t().
 new(Key, Desc, Type, Dft, Opts) ->
     #entry{key=Key, desc=Desc, type=Type, default=Dft, opts=Opts}.
 
@@ -46,12 +46,12 @@ new(Key, Desc, Type, Dft, Opts) ->
 new(App, {Key, Desc, Type, Default, Opts}) ->
     FullKey = econfig_utils:parse_key(App, Key),
     #entry{key=FullKey, desc=Desc, type=Type, default=Default, opts=Opts,
-	   select=relation(App, select, Opts),
-	   depends=relation(App, depends, Opts),
-	   menu=relation(App, menu, Opts),
-	   choice=relation(App, choice, Opts),
-	   requires=relation(App, requires, Opts),
-	   excludes=relation(App, excludes, Opts)}.
+		   select=relation(App, select, Opts),
+		   depends=relation(App, depends, Opts),
+		   menu=relation(App, menu, Opts),
+		   choice=relation(App, choice, Opts),
+		   requires=relation(App, requires, Opts),
+		   excludes=relation(App, excludes, Opts)}.
 
 
 -spec key(Entry :: t()) -> {atom(), atom()}.
@@ -91,10 +91,10 @@ deps(excludes,  #entry{excludes=D}) -> D.
 -spec eval(fun(), t()) -> econfig_value() | undefined.
 eval(Fun, #entry{opts=Opts}=Entry) ->
     case proplists:get_value(call, Opts, undefined) of
-	undefined -> 
-	    Fun(Entry);
-	{M, F, A} ->
-	    apply(M, F, A)
+		undefined -> 
+			Fun(Entry);
+		{M, F, A} ->
+			apply(M, F, A)
     end.
 
 %%%
@@ -102,6 +102,6 @@ eval(Fun, #entry{opts=Opts}=Entry) ->
 %%%
 relation(App, Type, Opts) ->
     lists:foldl(fun (DepDesc, Acc) ->
-			[ econfig_dep:new(App, DepDesc, Type) | Acc ]
-		end, [], proplists:get_value(Type, Opts, [])).
-    
+						[ econfig_dep:new(App, DepDesc, Type) | Acc ]
+				end, [], proplists:get_value(Type, Opts, [])).
+
