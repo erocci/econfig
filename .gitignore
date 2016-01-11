@@ -12,6 +12,7 @@ erl_crash.dump
 # Specific build output
 /src/econfig.app.src
 /econfig
+/.econfig
 
 # Dialyzer output
 /.*.plt
