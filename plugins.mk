@@ -7,7 +7,7 @@
 ECONFIG = $(DEPS_DIR)/econfig/econfig
 export ECONFIG
 
-ECONFIG_OPTS ?= 
+ECONFIG_GLOBAL_OPTS ?= 
 
 conf_verbose_0 = @echo " CONFIG "$(PROJECT);
 conf_verbose_2 = set -x;
@@ -16,6 +16,6 @@ conf_verbose = $(conf_verbose_$(V))
 all:: configure
 
 configure: Econfig
-	$(conf_verbose) $(ECONFIG) $(ECONFIG_OPTS) configure $(PROJECT):.
+	$(conf_verbose) $(ECONFIG) $(ECONFIG_GLOBAL_OPTS) configure $(ECONFIG_CONFIGURE_OPTS) $(PROJECT):.
 
 .PHONY: configure
