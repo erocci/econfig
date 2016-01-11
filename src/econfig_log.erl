@@ -65,9 +65,9 @@ log_erts(?LVL_ERROR, Msg, Data) ->
 
 
 log_tty(?LVL_DEBUG, Msg, Data) ->
-    io:format(standard_io, "D: " ++ Msg ++ "~n", Data);
+    io:format(standard_error, "D: " ++ Msg ++ "~n", Data);
 log_tty(?LVL_INFO, Msg, Data) ->
-    io:format(standard_io, "I: " ++ Msg ++ "~n", Data);
+    io:format(standard_error, "I: " ++ Msg ++ "~n", Data);
 log_tty(?LVL_WARN, Msg, Data) ->
     io:format(standard_error, "W: " ++ Msg ++ "~n", Data);
 log_tty(?LVL_ERROR, Msg, Data) ->
