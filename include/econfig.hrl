@@ -10,6 +10,7 @@
 						  Options :: [econfig_entry_opt()]}.
 
 -type econfig_entry_type() :: boolean
+							| const
 							| string
 							| {enum, [atom()]}
 							| integer 

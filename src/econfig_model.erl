@@ -94,17 +94,22 @@ pp(#model{}=Model) ->
 		   Config :: econfig_config:t(), 
 		   Model :: econfig_model:t()) -> econfig_config:t() | {error, term()}.
 eval(Entry, Fun, Config, Model) ->
-    case is_menu_set(Entry, Config, Model) of
-		ok ->
-			Val = case needs_eval(Entry, Config, Model) of
-					  true ->
-						  econfig_entry:eval(Fun, Entry);
-					  false ->
-						  disable_value(econfig_entry:type(Entry))
-				  end,
-			set(Entry, Val, Config, Model);
-		{error, _} = Err ->
-			Err
+	case econfig_entry:type(Entry) of
+		const ->
+			set(Entry, econfig_entry:default(Entry), Config, Model);
+		_ ->
+			case is_menu_set(Entry, Config, Model) of
+				ok ->
+					Val = case needs_eval(Entry, Config, Model) of
+							  true ->
+								  econfig_entry:eval(Fun, Entry);
+							  false ->
+								  disable_value(econfig_entry:type(Entry))
+						  end,
+					set(Entry, Val, Config, Model);
+				{error, _} = Err ->
+					Err
+			end
     end.
 
 %% true: the entry needs to be evaluated
