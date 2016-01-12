@@ -23,8 +23,26 @@ Default Makefile target build the `econfig` script.
 
 # Usage
 
+## Command line
 ```
 $ econfig help ...
+```
+
+## Integrating into Makefile based project
+
+Download the bootstrapping `econfig.mk`:
+```sh
+$ curl https://raw.githubusercontent.com/erocci/econfig/master/bootstrap/econfig.mk > econfig.mk
+```
+
+Bootstrap:
+```sh
+$ make -f econfig.mk
+```
+
+Include in your project's Makefile:
+```make
+include econfig.mk
 ```
 
 # Options
