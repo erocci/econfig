@@ -94,10 +94,10 @@ pp(#model{}=Model) ->
 		   Config :: econfig_config:t(), 
 		   Model :: econfig_model:t()) -> econfig_config:t() | {error, term()}.
 eval(Entry, Fun, Config, Model) ->
-	case econfig_entry:type(Entry) of
-		const ->
+	case never_eval(Entry) of
+		true ->
 			set(Entry, econfig_entry:default(Entry), Config, Model);
-		_ ->
+		false ->
 			case is_menu_set(Entry, Config, Model) of
 				ok ->
 					Val = case needs_eval(Entry, Config, Model) of
@@ -138,6 +138,14 @@ is_menu_set(Entry, Config, Model) ->
 set(Entry, Val, Config, Model) ->
     C0 = econfig_config:set(econfig_entry:key(Entry), Val, Config),
     select([Entry], C0, Model).
+
+
+never_eval(Entry) ->
+	case econfig_entry:type(Entry) of
+		const -> true;
+		{enum, [_Single]} -> true;
+		_ -> false
+	end.			
 
 
 select([], Config, _) ->
